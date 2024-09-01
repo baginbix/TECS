@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.002.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ECS", "ECS.csproj", "{ADA31C3C-4586-45FB-A292-D3C350C2F0EB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ECS", "ECS.csproj", "{9051E29C-B6EF-40C2-8762-DAD8956A3758}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,10 +11,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{ADA31C3C-4586-45FB-A292-D3C350C2F0EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{ADA31C3C-4586-45FB-A292-D3C350C2F0EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{ADA31C3C-4586-45FB-A292-D3C350C2F0EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{ADA31C3C-4586-45FB-A292-D3C350C2F0EB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9051E29C-B6EF-40C2-8762-DAD8956A3758}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9051E29C-B6EF-40C2-8762-DAD8956A3758}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9051E29C-B6EF-40C2-8762-DAD8956A3758}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9051E29C-B6EF-40C2-8762-DAD8956A3758}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
