@@ -88,7 +88,23 @@ namespace ECS.ECS
             group.Add(entity,entity);
         }
 
-        public void HasAll<T,E>(){
+        public List<Entity> HasAll<T,E>(){
+            Bitset bitset = new Bitset();
+            bitset.SetBit(componentBitRegistry.GetComponentBit<T>());
+            bitset.SetBit(componentBitRegistry.GetComponentBit<E>());
+            return groups[bitset].GetDense();
+        }
+
+        public List<Entity> HasAll<T,E,K>(){
+            Bitset bitset = new Bitset();
+            bitset.SetBit(componentBitRegistry.GetComponentBit<T>());
+            bitset.SetBit(componentBitRegistry.GetComponentBit<E>());
+            bitset.SetBit(componentBitRegistry.GetComponentBit<K>());
+            return groups[bitset].GetDense();
+        }
+
+        public List<T> Has<T>(){
+            return ((SparseSet<T>)components[typeof(T)]).GetDense();
         }
     }
 }
