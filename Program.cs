@@ -1,7 +1,8 @@
 ﻿
 using System;
+using BenchmarkDotNet.Running;
 using ECS.ECS;
-
+using ECS.ECS.Tests.Performance;
 
 
 ECS.ECS.ECS app = new();
@@ -21,9 +22,10 @@ app.AddSystem(app =>  {
 });
 app.Run();
 using var game = new ECS.Game1();
-game.Run();
+//game.Run();
 
 
+//var summary = BenchmarkRunner.Run<PerformanceTest>();
 struct Position{
     public int X;
     public int Y;

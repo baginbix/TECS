@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ECS.ECS.Tests;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace ECS.ECS
 {
@@ -11,16 +13,27 @@ namespace ECS.ECS
         EntityManager entityManager;
         Dictionary<Type,object> components;
 
+        Dictionary<Bitset,SparseSet<Entity>> groups;
+
+        ComponentBitRegistry componentBitRegistry;
+
+        SparseSet<Bitset> entityMasks;
+
         List<Run> systems;
 
         public ECS(){
             components = new();
             entityManager = new();
             systems = new();
+            groups = new();
+            componentBitRegistry = new();
+            entityMasks = new();
         }
 
         public Entity CreatEntity(){
-            return entityManager.GetId();
+            Entity entity = entityManager.GetId();
+            entityMasks.Add(entity,new Bitset());
+            return entity;
         }
 
         public void AddSystem(Run system){
@@ -30,6 +43,11 @@ namespace ECS.ECS
         public void InsertComponent<T>(Entity entityId, T component){
             SparseSet<T> set = GetOrCreateSet<T>();
             set.Add(entityId,component);
+            var bitPosition = componentBitRegistry.GetComponentBit<T>();
+            var bitset = entityMasks.GetValue(entityId);
+            bitset.SetBit(bitPosition);
+            entityMasks.Add(entityId,bitset);
+            AddToGroup(entityId);
         }
 
         private SparseSet<T> GetOrCreateSet<T>(){
@@ -44,6 +62,7 @@ namespace ECS.ECS
         public List<T> QueryComponent<T>(){
             return ((SparseSet<T>)components[typeof(T)]).GetDense();
         }   
+
         public void DestroyEntity(int id) {
 
         }
@@ -58,6 +77,18 @@ namespace ECS.ECS
             foreach(var system in systems){
                 system(this);
             }
+        }
+
+        private void AddToGroup(Entity entity){
+            Bitset bitset = entityMasks.GetValue(entity);
+            if(!groups.TryGetValue(bitset, out var group)){
+                group = new SparseSet<Entity>();
+                groups.Add(bitset, group);
+            }
+            group.Add(entity,entity);
+        }
+
+        public void HasAll<T,E>(){
         }
     }
 }
