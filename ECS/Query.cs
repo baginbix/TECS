@@ -5,8 +5,11 @@ using System.Threading.Tasks;
 
 namespace ECS.ECS
 {
-    public interface ISystem 
+    public class Query<T> where T : struct
     {
-        void Run<T>(ref T component);
+        public T[] query;
+        public Query(){
+            
+        }
     }
 }

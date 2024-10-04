@@ -1,14 +1,16 @@
 ﻿
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using BenchmarkDotNet.Running;
 using ECS.ECS;
-using ECS.ECS.Tests.Performance;
+using ECS.ECS.Tests.Components;
 
 
 ECS.ECS.ECS app = new();
-var id1 = app.CreatEntity();
-app.InsertComponent(id1, new Position{X = 10,Y = 10}); 
-app.InsertComponent(id1, new Velocity{X = 1, Y = 0}); 
+var id1 = app.CreateEntity();
+app.InsertComponent(id1, new TestComponents.Position{X = 10,Y = 10}); 
+app.InsertResource(new Points());
 
 int id = app.CreatEntity();
 app.InsertComponent(id, new Position{X = 1,Y = 10}); 
@@ -31,16 +33,10 @@ app.Run();
 using var game = new ECS.Game1();
 //game.Run();
 
-
 //var summary = BenchmarkRunner.Run<PerformanceTest>();
-struct Position{
-    public int X;
-    public int Y;
-}
 
-struct Velocity{
-    public int X;
-    public int Y;
+class Points{
+    public int points = 0;
 }
 
 struct Health{

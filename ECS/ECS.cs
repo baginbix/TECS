@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using ECS.ECS.Tests;
+using ECS.ECS.Tests.Components;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace ECS.ECS
 {
-    public delegate void Run(ECS app);
+    public delegate void Run(ref TestComponents.Position p,ref TestComponents.Velocity v);
     public class ECS
     {
         EntityManager entityManager;
@@ -21,6 +24,8 @@ namespace ECS.ECS
 
         List<Run> systems;
 
+        Dictionary<Type,object> resources;
+
         public ECS(){
             components = new();
             entityManager = new();
@@ -28,9 +33,10 @@ namespace ECS.ECS
             groups = new();
             componentBitRegistry = new();
             entityMasks = new();
+            resources = new();
         }
 
-        public Entity CreatEntity(){
+        public Entity CreateEntity(){
             Entity entity = entityManager.GetId();
             entityMasks.Add(entity,new Bitset());
             return entity;
@@ -38,6 +44,14 @@ namespace ECS.ECS
 
         public void AddSystem(Run system){
             systems.Add(system);
+        }
+
+        public void InsertResource<T>(T newResource){
+            resources.Add(typeof(T),newResource);
+        }
+
+        public T GetResource<T>(){
+            return (T)resources[typeof(T)];
         }
 
         public void InsertComponent<T>(Entity entityId, T component){
@@ -75,7 +89,14 @@ namespace ECS.ECS
 
         public void Run(){
             foreach(var system in systems){
-                system(this);
+                var components = HasAll<TestComponents.Position,TestComponents.Velocity>();
+                for(int i = 0; i < components.Count; i++){
+                    var component1 = components[i].Item1;
+                    var component2 = components[i].Item2;
+                    system(ref component1,ref component2);
+                    GetOrCreateSet<TestComponents.Position>().Add(components[i].Item3,component1);
+                    GetOrCreateSet<TestComponents.Velocity>().Add(components[i].Item3,component2);
+                }
             }
         }
 

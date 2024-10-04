@@ -18,7 +18,7 @@ namespace ECS.ECS.Tests.Performance
         {
             ECS app = new ECS();
             for (int i = 0; i < 1_000_000; i++) {
-                Entity id  = app.CreatEntity();
+                Entity id  = app.CreateEntity();
                 app.InsertComponent(id,i);
             }
         }
@@ -29,8 +29,8 @@ namespace ECS.ECS.Tests.Performance
         {
             ECS app = new ECS();
             for (int i = 0; i < 1_000_000; i++) {
-                Entity id  = app.CreatEntity();
-                app.InsertComponent(id,new Position{});
+                Entity id  = app.CreateEntity();
+                //app.InsertComponent(id,new Position{});
             }
         }
 
@@ -39,7 +39,7 @@ namespace ECS.ECS.Tests.Performance
         {
             ECS app = new ECS();
             for (int i = 0; i < 1_000_000; i++) {
-                Entity id  = app.CreatEntity();
+                Entity id  = app.CreateEntity();
                 app.InsertComponent(id,new TestClass{});
             }
         }
