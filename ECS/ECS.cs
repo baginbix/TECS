@@ -124,8 +124,23 @@ namespace ECS.ECS
             return groups[bitset].GetDense();
         }
 
-        public List<T> Has<T>(){
+        public List<T> Has<T>()
+        {
             return ((SparseSet<T>)components[typeof(T)]).GetDense();
         }
+
+        public Query<T,E> Query<T, E>()
+        {
+                        Query<T, E> query = new Query<T, E>();
+            Bitset bitset = new Bitset();
+            var componentBitT = componentBitRegistry.GetComponentBit<T>();
+            var t = components[typeof(T)].GetDense();
+            bitset.SetBit(componentBitT);
+            bitset.SetBit(componentBitRegistry.GetComponentBit<E>());
+            
+
+            var TE = groups[bitset].GetDense();
+        }
+
     }
 }
