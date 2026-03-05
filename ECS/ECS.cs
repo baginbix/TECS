@@ -1,12 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using ECS.ECS.Tests;
 using ECS.ECS.Tests.Components;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace ECS.ECS
 {
@@ -110,9 +105,15 @@ namespace ECS.ECS
         }
 
         public List<Entity> HasAll<T,E>(){
-            Bitset bitset = new Bitset();
-            bitset.SetBit(componentBitRegistry.GetComponentBit<T>());
-            bitset.SetBit(componentBitRegistry.GetComponentBit<E>());
+            SparseSet<T> s1 = (SparseSet<T>)components[typeof(T)];
+            SparseSet<E> s2 = (SparseSet<E>)components[typeof(E)];
+            var smallest = s1.GetDense().Count < s2.GetDense().Count ? s1 : s2;
+            var other = s1.GetDense().Count < s2.GetDense().Count ? s2 : s1;
+
+            List<Entity> entities = new List<Entity>(smallest.Count);
+            for(int i = 0; i < smallest.Count; i++)
+            {
+            }
             return groups[bitset].GetDense();
         }
 
@@ -131,7 +132,7 @@ namespace ECS.ECS
 
         public Query<T,E> Query<T, E>()
         {
-                        Query<T, E> query = new Query<T, E>();
+            Query<T, E> query = new Query<T, E>();
             Bitset bitset = new Bitset();
             var componentBitT = componentBitRegistry.GetComponentBit<T>();
             var t = components[typeof(T)].GetDense();
