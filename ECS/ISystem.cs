@@ -7,6 +7,6 @@ namespace ECS.ECS
 {
     public interface ISystem 
     {
-        void Run<T>(ref T component);
+        void Run(ECS ecs);
     }
 }

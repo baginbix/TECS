@@ -5,7 +5,6 @@ using ECS.ECS.Tests.Components;
 
 namespace ECS.ECS
 {
-    public delegate void Run(ref TestComponents.Position p,ref TestComponents.Velocity v);
     public class ECS
     {
         EntityManager entityManager;
@@ -17,7 +16,7 @@ namespace ECS.ECS
 
         SparseSet<Bitset> entityMasks;
 
-        List<Run> systems;
+        List<ISystem> systems;
 
         Dictionary<Type,object> resources;
 
@@ -37,7 +36,7 @@ namespace ECS.ECS
             return entity;
         }
 
-        public void AddSystem(Run system){
+        public void AddSystem(ISystem system){
             systems.Add(system);
         }
 
@@ -83,15 +82,9 @@ namespace ECS.ECS
 
 
         public void Run(){
-            foreach(var system in systems){
-                var components = HasAll<TestComponents.Position,TestComponents.Velocity>();
-                for(int i = 0; i < components.Count; i++){
-                    var component1 = components[i].Item1;
-                    var component2 = components[i].Item2;
-                    system(ref component1,ref component2);
-                    GetOrCreateSet<TestComponents.Position>().Add(components[i].Item3,component1);
-                    GetOrCreateSet<TestComponents.Velocity>().Add(components[i].Item3,component2);
-                }
+            foreach(var system in systems)
+            {
+                system.Run(this);
             }
         }
 
@@ -105,16 +98,21 @@ namespace ECS.ECS
         }
 
         public List<Entity> HasAll<T,E>(){
-            SparseSet<T> s1 = (SparseSet<T>)components[typeof(T)];
-            SparseSet<E> s2 = (SparseSet<E>)components[typeof(E)];
-            var smallest = s1.GetDense().Count < s2.GetDense().Count ? s1 : s2;
-            var other = s1.GetDense().Count < s2.GetDense().Count ? s2 : s1;
+            ISparseSet s1 = (ISparseSet)components[typeof(T)];
+            ISparseSet s2 = (ISparseSet)components[typeof(E)];
+            var smallest = s1.Size < s2.Size ? s1 : s2;
+            var other = s1.Size < s2.Size ? s2 : s1;
 
-            List<Entity> entities = new List<Entity>(smallest.Count);
-            for(int i = 0; i < smallest.Count; i++)
+            List<Entity> entities = new List<Entity>(smallest.Size);
+
+            var smallestEntities = smallest.GetEntities();
+            for(int i = 0; i < smallestEntities.Count; i++)
             {
+                if(other.Contains(smallestEntities[i])){
+                    entities.Add(smallestEntities[i]);
+                }
             }
-            return groups[bitset].GetDense();
+            return entities;
         }
 
         public List<Entity> HasAll<T,E,K>(){
@@ -132,15 +130,21 @@ namespace ECS.ECS
 
         public Query<T,E> Query<T, E>()
         {
-            Query<T, E> query = new Query<T, E>();
-            Bitset bitset = new Bitset();
-            var componentBitT = componentBitRegistry.GetComponentBit<T>();
-            var t = components[typeof(T)].GetDense();
-            bitset.SetBit(componentBitT);
-            bitset.SetBit(componentBitRegistry.GetComponentBit<E>());
-            
+             ISparseSet s1 = (ISparseSet)components[typeof(T)];
+            ISparseSet s2 = (ISparseSet)components[typeof(E)];
+            var smallest = s1.Size < s2.Size ? s1 : s2;
+            var other = s1.Size < s2.Size ? s2 : s1;
 
-            var TE = groups[bitset].GetDense();
+            List<Entity> entities = new List<Entity>(smallest.Size);
+
+            var smallestEntities = smallest.GetEntities();
+            for(int i = 0; i < smallestEntities.Count; i++)
+            {
+                if(other.Contains(smallestEntities[i])){
+                    entities.Add(smallestEntities[i]);
+                }
+            }
+            return entities;
         }
 
     }
