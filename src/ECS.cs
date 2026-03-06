@@ -17,6 +17,7 @@ namespace TECS
         List<ISystem> systems;
 
         Dictionary<Type,object> resources;
+        CommandBuffer commandBuffer = new();
 
         public ECS(){
             components = new();
@@ -89,8 +90,10 @@ namespace TECS
         public void Run(){
             foreach(var system in systems)
             {
-                system.Run(this);
+                system.Run(this, commandBuffer);
             }
+
+            cmd.Flush(this);
         }
 
         private void AddToGroup(Entity entity){

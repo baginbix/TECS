@@ -36,7 +36,7 @@ namespace TECS.Tests
     }
     class MoveSystem : ISystem
     {
-        public void Run(ECS ecs)
+        public void Run(ECS ecs, ref CommandBuffer cmd)
         {
             var query = ecs.Query<Position>();
             query.ForEach(new MoveAction());
