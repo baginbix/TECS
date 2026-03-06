@@ -9,13 +9,27 @@ namespace TECS
     {
         List<Entity> entitiesToBeDestroyed;
 
+        List<Entity> entitiesToSpawn;
+        int currentFakeID = -1;
         public CommandBuffer()
         {
             entitiesToBeDestroyed = new(100);
+            entitiesToSpawn = new(100);
+        }
+
+        private Entity GenerateID(){
+            return currentFakeID--;
         }
 
         public void DestroyEntity(Entity id){
             entitiesToBeDestroyed.Add(id);
+        }
+
+        public Entity SpawnEntity()
+        {
+            var entity = GenerateID();
+            entitiesToSpawn.Add(entity);
+            return entity;
         }
 
         public void Flush(ECS ecs){
@@ -24,5 +38,7 @@ namespace TECS
             }
             entitiesToBeDestroyed.Clear();
         }
+
+
     }
 }
