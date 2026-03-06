@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
-using ECS.ECS.Tests;
-using ECS.ECS.Tests.Components;
 
-namespace ECS.ECS
+namespace TECS
 {
     public class ECS
     {
         EntityManager entityManager;
-        Dictionary<Type,object> components;
+        Dictionary<Type,ISparseSet> components;
 
         Dictionary<Bitset,SparseSet<Entity>> groups;
 
@@ -71,8 +69,15 @@ namespace ECS.ECS
             return ((SparseSet<T>)components[typeof(T)]).GetDense();
         }   
 
-        public void DestroyEntity(int id) {
-
+        public void DestroyEntity(Entity id) {
+            Bitset bitset = entityMasks.GetValue(id);
+            entityMasks.Remove(id);
+            for(int i = 0; i < componentBitRegistry.size; i++){
+                if((bitset.bits & (1ul << i)) != 0){
+                    Type componentType = componentBitRegistry.GetComponentType(i);
+                    components[componentType].Remove(id);
+                }
+            }
         }
 
         public void RemoveComponent<T>(Entity entityId) {
@@ -128,23 +133,17 @@ namespace ECS.ECS
             return ((SparseSet<T>)components[typeof(T)]).GetDense();
         }
 
-        public Query<T,E> Query<T, E>()
+        public Query<T> Query<T>()
+        where T: struct
         {
-             ISparseSet s1 = (ISparseSet)components[typeof(T)];
-            ISparseSet s2 = (ISparseSet)components[typeof(E)];
-            var smallest = s1.Size < s2.Size ? s1 : s2;
-            var other = s1.Size < s2.Size ? s2 : s1;
+            return new Query<T>((SparseSet<T>)components[typeof(T)]);
+        }
 
-            List<Entity> entities = new List<Entity>(smallest.Size);
-
-            var smallestEntities = smallest.GetEntities();
-            for(int i = 0; i < smallestEntities.Count; i++)
-            {
-                if(other.Contains(smallestEntities[i])){
-                    entities.Add(smallestEntities[i]);
-                }
-            }
-            return entities;
+        public Query<T,E> Query<T,E>()
+        where T: struct 
+        where  E: struct
+        {
+            return new Query<T,E>((SparseSet<T>)components[typeof(T)], (SparseSet<E>)components[typeof(E)]);
         }
 
     }

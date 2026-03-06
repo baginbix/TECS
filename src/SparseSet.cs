@@ -4,7 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
-namespace ECS.ECS
+namespace TECS
 {
     public interface ISparseSet
     {

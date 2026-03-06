@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace ECS.ECS.Tests
+namespace TECS
 {
     public class ComponentBitRegistry
     {
@@ -19,8 +19,15 @@ namespace ECS.ECS.Tests
             return components[type];
         }
 
+        public Type GetComponentType(int bit)
+        {
+            return components.FirstOrDefault(x => x.Value == bit).Key;
+        }
+
         private void InsertComponentBit(Type t){
             components[t] = nextBit++;
         }
+
+        public int size => components.Count;
     }
 }

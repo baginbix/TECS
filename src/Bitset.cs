@@ -2,9 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Perfolizer.Mathematics.Multimodality;
 
-namespace ECS.ECS
+namespace TECS
 {
     public struct Bitset
     {
