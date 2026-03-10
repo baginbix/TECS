@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Xunit;
 using TECS;
+using TECS.Commands;
 
 namespace TECS.Tests
 {

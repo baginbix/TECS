@@ -1,129 +1,164 @@
 using System;
 using System.Collections.Generic;
+using TECS.Commands;
+using TECS.Components;
 
 namespace TECS
 {
     public class ECS
     {
+        readonly int MaxEntityCount = 1_000_000;
         EntityManager entityManager;
-        Dictionary<Type,ISparseSet> components;
+        ISparseSet[] components;
 
-        Dictionary<Bitset,SparseSet<Entity>> groups;
+        Dictionary<Bitset, SparseSet<Entity>> groups;
 
         ComponentBitRegistry componentBitRegistry;
 
-        SparseSet<Bitset> entityMasks;
+        Bitset[] entityMasks;
 
         List<ISystem> systems;
 
-        Dictionary<Type,object> resources;
+        Dictionary<Type, object> resources;
         CommandBuffer commandBuffer = new();
 
-        public ECS(){
-            components = new();
+        public ECS(int maxEntityCount = 1000)
+        {
+            components = new ISparseSet[100];
             entityManager = new();
             systems = new();
             groups = new();
             componentBitRegistry = new();
-            entityMasks = new();
+            entityMasks = new Bitset[1000];
             resources = new();
+            MaxEntityCount = maxEntityCount;
+
         }
 
-        public Entity CreateEntity(){
+        public ECS() : this(1_000) { }
+
+        public Entity CreateEntity()
+        {
             Entity entity = entityManager.GetId();
-            entityMasks.Add(entity,new Bitset());
+            if (entity.Id >= entityMasks.Length)
+            {
+                Array.Resize(ref entityMasks, entityMasks.Length * 2);
+            }
+            entityMasks[entity] = new();
             return entity;
         }
 
-        public void AddSystem(ISystem system){
+        public void AddSystem(ISystem system)
+        {
             systems.Add(system);
         }
 
-        public void InsertResource<T>(T newResource){
-            resources.Add(typeof(T),newResource);
+        public void InsertResource<T>(T newResource)
+        {
+            resources.Add(typeof(T), newResource);
         }
 
-        public T GetResource<T>(){
+        public T GetResource<T>()
+        {
             return (T)resources[typeof(T)];
         }
 
-        public void InsertComponent<T>(Entity entityId, T component){
+        public void InsertComponent<T>(Entity entityId, T component) where T : struct
+        {
+            int typeId = ComponentID<T>.Value;
             SparseSet<T> set = GetOrCreateSet<T>();
-            set.Add(entityId,component);
-            var bitPosition = componentBitRegistry.GetComponentBit<T>();
-            var bitset = entityMasks.GetValue(entityId);
-            bitset.SetBit(bitPosition);
-            entityMasks.Add(entityId,bitset);
-            AddToGroup(entityId);
+
+            set.Add(entityId, component);
+            entityMasks[entityId].SetBit(typeId);
         }
 
-        private SparseSet<T> GetOrCreateSet<T>(){
-            if(!components.TryGetValue(typeof(T),out var set)){
-                set = new SparseSet<T>();
-                components.Add(typeof(T), set);
+        private SparseSet<T> GetOrCreateSet<T>() where T : struct
+        {
+            int typeID = ComponentID<T>.Value;
+            if (typeID >= components.Length)
+            {
+                Array.Resize(ref components, Math.Max(typeID + 1, components.Length * 2));
+            }
+            if (components[typeID] == null)
+            {
+                components[typeID] = new SparseSet<T>(MaxEntityCount);
+                ComponentRegistry.Register(typeof(T));
             }
 
-            return (SparseSet<T>) set;
+            return (SparseSet<T>)components[typeID];
         }
 
-        public List<T> QueryComponent<T>(){
-            return ((SparseSet<T>)components[typeof(T)]).GetDense();
-        }   
+        public List<T> QueryComponent<T>() where T : struct
+        {
+            return GetOrCreateSet<T>().GetDense();
+        }
 
-        public void DestroyEntity(Entity id) {
-            Bitset bitset = entityMasks.GetValue(id);
-            entityMasks.Remove(id);
-            for(int i = 0; i < componentBitRegistry.size; i++){
-                if((bitset.bits & (1ul << i)) != 0){
-                    Type componentType = componentBitRegistry.GetComponentType(i);
-                    components[componentType].Remove(id);
+        public void DestroyEntity(Entity id)
+        {
+            Bitset bitset = entityMasks[id];
+
+            for (int i = 0; i < 64; i++)
+            {
+                if (bitset.HasBit(i))
+                {
+                    components[i].Remove(id);
                 }
             }
+
+            entityMasks[id].ClearBits();
+            //TODO: Release ID back to EntityManager
         }
 
-        public void RemoveComponent<T>(Entity entityId) {
+        public void RemoveComponent<T>(Entity entityId) where T : struct
+        {
             SparseSet<T> set = GetOrCreateSet<T>();
             set.Remove(entityId);
         }
 
 
-        public void Run(){
-            foreach(var system in systems)
+        public void Run()
+        {
+            foreach (var system in systems)
             {
-                system.Run(this, commandBuffer);
+                system.Run(this, ref commandBuffer);
             }
 
-            cmd.Flush(this);
+            commandBuffer.Flush(this);
         }
 
-        private void AddToGroup(Entity entity){
-            Bitset bitset = entityMasks.GetValue(entity);
-            if(!groups.TryGetValue(bitset, out var group)){
-                group = new SparseSet<Entity>();
+        private void AddToGroup(Entity entity)
+        {
+            Bitset bitset = entityMasks[entity];
+            if (!groups.TryGetValue(bitset, out var group))
+            {
+                group = new SparseSet<Entity>(MaxEntityCount);
                 groups.Add(bitset, group);
             }
-            group.Add(entity,entity);
+            group.Add(entity, entity);
         }
 
-        public List<Entity> HasAll<T,E>(){
-            ISparseSet s1 = (ISparseSet)components[typeof(T)];
-            ISparseSet s2 = (ISparseSet)components[typeof(E)];
+        public List<Entity> HasAll<T, E>() where T : struct where E : struct
+        {
+            ISparseSet s1 = GetOrCreateSet<T>();
+            ISparseSet s2 = GetOrCreateSet<E>();
             var smallest = s1.Size < s2.Size ? s1 : s2;
             var other = s1.Size < s2.Size ? s2 : s1;
 
             List<Entity> entities = new List<Entity>(smallest.Size);
 
             var smallestEntities = smallest.GetEntities();
-            for(int i = 0; i < smallestEntities.Count; i++)
+            for (int i = 0; i < smallestEntities.Count; i++)
             {
-                if(other.Contains(smallestEntities[i])){
+                if (other.Contains(smallestEntities[i]))
+                {
                     entities.Add(smallestEntities[i]);
                 }
             }
             return entities;
         }
 
-        public List<Entity> HasAll<T,E,K>(){
+        public List<Entity> HasAll<T, E, K>()
+        {
             Bitset bitset = new Bitset();
             bitset.SetBit(componentBitRegistry.GetComponentBit<T>());
             bitset.SetBit(componentBitRegistry.GetComponentBit<E>());
@@ -131,22 +166,35 @@ namespace TECS
             return groups[bitset].GetDense();
         }
 
-        public List<T> Has<T>()
+        public List<T> Has<T>(Entity entity) where T : struct
         {
-            return ((SparseSet<T>)components[typeof(T)]).GetDense();
+            throw new NotImplementedException();
         }
 
         public Query<T> Query<T>()
-        where T: struct
+        where T : struct
         {
-            return new Query<T>((SparseSet<T>)components[typeof(T)]);
+            return new Query<T>(GetOrCreateSet<T>());
         }
 
-        public Query<T,E> Query<T,E>()
-        where T: struct 
-        where  E: struct
+        public Query<T, E> Query<T, E>()
+        where T : struct
+        where E : struct
         {
-            return new Query<T,E>((SparseSet<T>)components[typeof(T)], (SparseSet<E>)components[typeof(E)]);
+            return new Query<T, E>(GetOrCreateSet<T>(), GetOrCreateSet<E>());
+        }
+
+        public Query<T, E, K> Query<T, E, K>()
+        where T : struct
+        where E : struct
+        where K : struct
+        {
+            return new Query<T, E, K>(GetOrCreateSet<T>(), GetOrCreateSet<E>(), GetOrCreateSet<K>(), entityMasks);
+        }
+
+        public List<T> GetComponentList<T>() where T : struct
+        {
+            return GetOrCreateSet<T>().GetDense();
         }
 
     }

@@ -4,8 +4,9 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Project Path="Game/ECS.csproj" />
   <Folder Name="/tests/">
+    <Project Path="tests/Performance/Performance.csproj" />
     <Project Path="tests/UnitTestsECS/UnitTestsECS.csproj" />
   </Folder>
-  <Project Path="Game/ECS.csproj" />
 </Solution>

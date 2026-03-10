@@ -13,7 +13,7 @@ namespace TECS
             bits = 0;
         }
 
-        public static implicit operator long(Bitset bitset) => bitset;
+        public static implicit operator long(Bitset bitset) => (long)bitset.bits;
 
         public void SetBit(int position){
             bits |= 1ul << position;
@@ -25,6 +25,10 @@ namespace TECS
 
         public void ClearBits(){
             bits = 0;
+        }
+
+        public bool HasBit(int position){
+            return (bits & (1ul << position)) != 0;
         }
     }
 }

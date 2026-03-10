@@ -1,50 +1,103 @@
-﻿using BenchmarkDotNet.Attributes;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System;
+using System.Numerics;
+using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
+using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Running;
+using TECS;
+using TECS.Commands;
 
-namespace ECS.ECS.Tests.Performance
+// This attribute tells BDN to track every single byte allocated
+[MemoryDiagnoser] 
+[DisassemblyDiagnoser(printSource: true, maxDepth: 2)]// Views the generated assembly code for the benchmarked methods.
+public class EcsBenchmarks
 {
-    public class PerformanceTest
+    public struct Position { public float X; public float Y; }
+    public struct Velocity { public float Dx; public float Dy; }
+
+    public struct MoveSystem : IQueryAction<Position, Velocity>
     {
-        class TestClass{
-            public int Id { get; set;}
+        public void Execute(ref Position p, ref Velocity v)
+        {
+            p.X += v.Dx;
+            p.Y += v.Dy;
+        }
+    }
+
+    private ECS ecs;
+    private CommandBuffer cmd;
+
+
+
+
+    [Params(10,100,1000,10_000, 100_000, 1_000_000)] // BDN will automatically run the test for both sizes!
+    public int EntityCount { get; set; }
+
+    // GlobalSetup runs ONCE before the benchmark starts. 
+    // We use it to populate the world.
+    [GlobalSetup]
+    public void Setup()
+    {
+        ecs = new ECS(EntityCount);
+        cmd = new CommandBuffer();
+
+        for (int i = 0; i < EntityCount; i++)
+        {
+            var e = cmd.SpawnEntity();
+            cmd.InsertComponent(new Position { X = 0, Y = 0 }, e);
+            cmd.InsertComponent(new Velocity { Dx = 1f, Dy = 1f }, e);
+        }
+        
+        cmd.Flush(ecs);
+    }
+
+    // This is the actual code being measured.
+    [Benchmark]
+    public void IterateQueryLambda()
+    {
+        var moveQuery = ecs.Query<Position, Velocity>();
+        moveQuery.ForEach((ref Position p, ref Velocity v) =>
+        {
+            p.X += v.Dx;
+            p.Y += v.Dy;
+        });
+    }
+
+    [Benchmark]
+    public void IterateQueryQueryAction()
+    {
+        var moveQuery = ecs.Query<Position, Velocity>();
+        var action = new MoveSystem();
+        moveQuery.ForEach(ref action);
+    }
+
+    [Benchmark]
+    public void IterateSparseSetAVX()
+    {
+        var positionSet = CollectionsMarshal.AsSpan( ecs.GetComponentList<Position>());
+        var velocitySet = CollectionsMarshal.AsSpan( ecs.GetComponentList<Velocity>());
+
+        var posSpan = MemoryMarshal.Cast<Position, float>(positionSet);
+        var velSpan = MemoryMarshal.Cast<Velocity, float>(velocitySet);
+        int i = 0;
+        for (; i < posSpan.Length; i+=8)
+        {
+            Vector256<float> pVec = Vector256.LoadUnsafe(ref posSpan[i]);
+            Vector256<float> vVec = Vector256.LoadUnsafe(ref velSpan[i]);
+
+            Vector256<float> result = Vector256.Add(pVec, vVec);
+
+            result.StoreUnsafe(ref posSpan[i]);
+        
         }
 
-        [Benchmark]
-        public void InsertI32()
+        if(i < posSpan.Length)
         {
-            ECS app = new ECS();
-            for (int i = 0; i < 1_000_000; i++) {
-                Entity id  = app.CreateEntity();
-                app.InsertComponent(id,i);
+            for(; i < posSpan.Length; i+=2)
+            {
+                posSpan[i] += velSpan[i];
+                posSpan[i+1] += velSpan[i+1];
             }
         }
-
-
-        [Benchmark]
-        public void InsertStruct()
-        {
-            ECS app = new ECS();
-            for (int i = 0; i < 1_000_000; i++) {
-                Entity id  = app.CreateEntity();
-                //app.InsertComponent(id,new Position{});
-            }
-        }
-
-        [Benchmark]
-        public void InsertClass()
-        {
-            ECS app = new ECS();
-            for (int i = 0; i < 1_000_000; i++) {
-                Entity id  = app.CreateEntity();
-                app.InsertComponent(id,new TestClass{});
-            }
-        }
-
-
-
     }
 }

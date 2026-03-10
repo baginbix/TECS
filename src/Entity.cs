@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace TECS
 {
-    public struct Entity
+    public readonly struct Entity
     {
         public int Id{get;}
         public Entity(int id){
