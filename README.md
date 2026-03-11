@@ -19,7 +19,24 @@ It uses a SparseSet implementation with plans of adding Archetypes to use whiche
 - Event system
 - Multi-threading
 - ForEach having the option to use Entity (Next in line to be implemented)
+
+## Limitations
+**These are limitations that exist right now! They are planned to change in the future.**
+
+- **Max amount of entities** As of now, you must define the maximum amount of entities the ECS can use upon initialization (e.g., `ECS ecs = new(100_000)`). The default is 1,000. This provides better upfront performance and zero allocations at the cost of pre-allocated memory.
   
+- **No read-only query constraints**
+  Due to C# generic limitations, all components in a `Query` are passed as `ref`. There is currently no built-in way to restrict a system to strictly read-only (`in`) access for specific components.
+
+- **No event messaging**
+  There is no event-queue you can use to tell systems that something happened. For example, you cannot currently broadcast that two objects collided. Ideally, you want a way to decouple collision-detection from collision-handling, which will require an event system.
+
+- **Component limit per query (`Query<T,E,K>()`)**
+  You can currently only query up to 3 components at the same time. While needing more than 3 often implies a system is doing too much and should be rethought, options to query 4+ components will be added soon.
+
+- **No Entity Versioning (Generations)**
+  Entities do not currently use generational versioning. If an entity is destroyed and its ID is recycled, external references to that ID will not know the original entity died (the "stale pointer" problem).
+
 ## Installation
 There is no NuGet package for now but it might get added in the future. 
 
