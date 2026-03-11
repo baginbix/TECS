@@ -37,7 +37,7 @@ namespace src
         {
             foreach(var system in systems)
             {
-                system.Initialize(ecs);
+                //system.Initialize(ecs);
             }
         }
 
@@ -45,7 +45,7 @@ namespace src
         {
             foreach(var system in systems)
             {
-                system.Update(ecs, ref commandBuffer);
+                system.Run(ecs, ref commandBuffer);
             }
         }
 
@@ -53,7 +53,7 @@ namespace src
         {
             foreach(var system in systems)
             {
-                system.TearDown(ecs);
+                //system.TearDown(ecs);
             }
         }
     }

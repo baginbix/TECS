@@ -29,21 +29,21 @@ namespace TECS
             Array.Fill(sparse, -1);
         }
         public void Add(Entity entity, T data){
-            if(sparse[entity] != -1){
-                dense[sparse[entity]] = data;
+            if(sparse[entity.Id] != -1){
+                dense[sparse[entity.Id]] = data;
                 return;
             }         
             dense.Add(data);
             denseEntities.Add(entity);
-            sparse[entity] = dense.Count-1;
+            sparse[entity.Id] = dense.Count-1;
         }
 
         public void Remove(Entity entity){
-            if(sparse[entity] == -1){
+            if(sparse[entity.Id] == -1){
                 return;
             }   
 
-            int denseId = sparse[entity];
+            int denseId = sparse[entity.Id];
             dense[denseId] = dense[dense.Count-1];
             denseEntities[denseId] = denseEntities[dense.Count-1];
             
@@ -51,11 +51,11 @@ namespace TECS
             denseEntities.RemoveAt(denseEntities.Count - 1);
 
             sparse[dense.Count] = denseId;
-            sparse[entity] = -1;
+            sparse[entity.Id] = -1;
         }
 
         public T GetValue(Entity entity){
-            return dense[sparse[entity]];
+            return dense[sparse[entity.Id]];
         }
 
         public List<T> GetDense(){

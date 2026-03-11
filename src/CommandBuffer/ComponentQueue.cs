@@ -32,8 +32,8 @@ namespace TECS.Commands
             foreach(var (component, entity) in componentsToInsert)
             {
                 var id = entity;
-                if(id < 0){
-                    id = mappedIDs[id * -1 - 1];
+                if(id.Id < 0){
+                    id = mappedIDs[id.Id * -1 - 1];
                 }
                 ecs.InsertComponent(id, component);
             }

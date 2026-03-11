@@ -75,7 +75,7 @@ where  E: struct
             var entitiesE = s2.GetSparseSet().AsSpan();
             for(int i = 0; i < denseT.Length; i++)
             {
-                int entityId = entities[i];
+                int entityId = entities[i].Id;
                 int indexE = entitiesE[entityId];
                 if(indexE != -1){
                     func(ref denseT[i], ref denseE[indexE]);
@@ -88,7 +88,7 @@ where  E: struct
             var entitiesE = s1.GetSparseSet().AsSpan();
             for(int i = 0; i < denseE.Length; i++)
             {
-                int entityId = entities[i];
+                int entityId = entities[i].Id;
                 int indexE = entitiesE[entityId];
                 if(indexE != -1){
                     func(ref denseT[indexE], ref denseE[i]);
@@ -109,7 +109,7 @@ where  E: struct
             var entitiesE = s2.GetSparseSet().AsSpan();
             for(int i = 0; i < denseT.Length; i++)
             {
-                int entityId = entities[i];
+                int entityId = entities[i].Id;
                 int indexE = entitiesE[entityId];
                 if(indexE != -1){
                     action.Execute(ref denseT[i], ref denseE[indexE]);
@@ -122,7 +122,7 @@ where  E: struct
             var entitiesE = s1.GetSparseSet().AsSpan();
             for(int i = 0; i < denseE.Length; i++)
             {
-                int entityId = entities[i];
+                int entityId = entities[i].Id;
                 int indexE = entitiesE[entityId];
                 if(indexE != -1){
                     action.Execute(ref denseT[indexE], ref denseE[i]);
@@ -182,7 +182,7 @@ where K: struct
             var entitiesK = s3.GetSparseSet().AsSpan();
             for(int i = 0; i < denseT.Length; i++)
             {
-                int entityId = entities[i];
+                int entityId = entities[i].Id;
                 Bitset entityMask = entitiesMask[entityId];
                 if((queryFilter.exludeMask & entityMask) != 0) continue;
                 if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
@@ -200,7 +200,7 @@ where K: struct
             var entitiesK = s3.GetSparseSet().AsSpan();
             for(int i = 0; i < denseE.Length; i++)
             {
-                int entityId = entities[i];
+                int entityId = entities[i].Id;
                 Bitset entityMask = entitiesMask[entityId];
                 if((queryFilter.exludeMask & entityMask) != 0) continue;
                 if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
@@ -218,7 +218,7 @@ where K: struct
             var entitiesE = s2.GetSparseSet().AsSpan();
             for(int i = 0; i < denseK.Length; i++)
             {
-                int entityId = entities[i];
+                int entityId = entities[i].Id;
                 Bitset entityMask = entitiesMask[entityId];
                 if((queryFilter.exludeMask & entityMask) != 0) continue;
                 if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
@@ -248,7 +248,7 @@ where K: struct
             var entitiesK = s3.GetSparseSet().AsSpan();
             for(int i = 0; i < denseT.Length; i++)
             {
-                int entityId = entities[i];
+                int entityId = entities[i].Id;
                 Bitset entityMask = entitiesMask[entityId];
                 if((queryFilter.exludeMask & entityMask) != 0) continue;
                 if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
@@ -267,7 +267,7 @@ where K: struct
             var entitiesK = s3.GetSparseSet().AsSpan();
             for(int i = 0; i < denseE.Length; i++)
             {
-                int entityId = entities[i];
+                int entityId = entities[i].Id;
                 Bitset entityMask = entitiesMask[entityId];
                 if((queryFilter.exludeMask & entityMask) != 0) continue;
                 if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
@@ -285,7 +285,7 @@ where K: struct
             var entitiesE = s2.GetSparseSet().AsSpan();
             for(int i = 0; i < denseK.Length; i++)
             {
-                int entityId = entities[i];
+                int entityId = entities[i].Id;
                 Bitset entityMask = entitiesMask[entityId];
                 if((queryFilter.exludeMask & entityMask) != 0) continue;
                 if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;

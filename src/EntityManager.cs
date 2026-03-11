@@ -11,7 +11,7 @@ namespace TECS
         private int nextId = 0;
 
         public Entity GetId(){
-            return nextId++;
+            return new Entity(nextId++,0);
         }
     }
 }
