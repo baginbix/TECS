@@ -33,7 +33,7 @@ public struct CommandBuffer
     }
 
     private Entity GenerateID(){
-        return currentFakeID--;
+        return new(currentFakeID--,0);
     }
 
     public void DestroyEntity(Entity id){

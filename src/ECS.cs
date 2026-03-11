@@ -45,8 +45,13 @@ namespace TECS
             {
                 Array.Resize(ref entityMasks, entityMasks.Length * 2);
             }
-            entityMasks[entity] = new();
+            entityMasks[entity.Id] = new();
             return entity;
+        }
+
+        public bool IsEntityAlive(Entity entity)
+        {
+            return entityManager.IsAlive(entity);
         }
 
         public void AddSystem(ISystem system)
@@ -70,7 +75,7 @@ namespace TECS
             SparseSet<T> set = GetOrCreateSet<T>();
 
             set.Add(entityId, component);
-            entityMasks[entityId].SetBit(typeId);
+            entityMasks[entityId.Id].SetBit(typeId);
         }
 
         private SparseSet<T> GetOrCreateSet<T>() where T : struct
@@ -110,17 +115,17 @@ namespace TECS
 
         public void DestroyEntity(Entity entity)
         {
-            Bitset bitset = entityMasks[id];
+            Bitset bitset = entityMasks[entity.Id];
 
             for (int i = 0; i < 64; i++)
             {
                 if (bitset.HasBit(i))
                 {
-                    components[i].Remove(id);
+                    components[i].Remove(entity);
                 }
             }
 
-            entityMasks[id].ClearBits();
+            entityMasks[entity.Id].ClearBits();
             //TODO: Release ID back to EntityManager
         }
 
@@ -143,7 +148,7 @@ namespace TECS
 
         private void AddToGroup(Entity entity)
         {
-            Bitset bitset = entityMasks[entity];
+            Bitset bitset = entityMasks[entity.Id];
             if (!groups.TryGetValue(bitset, out var group))
             {
                 group = new SparseSet<Entity>(MaxEntityCount);
