@@ -21,27 +21,27 @@ namespace UnitTestsECS
             var ecs = new ECS();
 
             // Entity 0: The Player (Has Everything + PlayerTag)
-            int e0 = ecs.CreateEntity();
+            Entity e0 = ecs.CreateEntity();
             ecs.InsertComponent(e0, new Position());
             ecs.InsertComponent(e0, new Velocity());
             ecs.InsertComponent(e0, new Health());
             ecs.InsertComponent(e0, new PlayerTag());
 
             // Entity 1: Normal Enemy (Missing PlayerTag)
-            int e1 = ecs.CreateEntity();
+            Entity e1 = ecs.CreateEntity();
             ecs.InsertComponent(e1, new Position());
             ecs.InsertComponent(e1, new Velocity());
             ecs.InsertComponent(e1, new Health());
 
             // Entity 2: Frozen Enemy (Has Frozen tag)
-            int e2 = ecs.CreateEntity();
+            Entity e2 = ecs.CreateEntity();
             ecs.InsertComponent(e2, new Position());
             ecs.InsertComponent(e2, new Velocity());
             ecs.InsertComponent(e2, new Health());
             ecs.InsertComponent(e2, new Frozen());
 
             // Entity 3: A Rock (Missing Velocity entirely, but has PlayerTag just to trick it)
-            int e3 = ecs.CreateEntity();
+            Entity e3 = ecs.CreateEntity();
             ecs.InsertComponent(e3, new Position());
             ecs.InsertComponent(e3, new Health());
             ecs.InsertComponent(e3, new PlayerTag());
@@ -98,7 +98,7 @@ namespace UnitTestsECS
             var ecs = SetupTestEcs();
 
             // Let's add PlayerTag to the Frozen enemy to test complex overlap
-            ecs.InsertComponent(2, new PlayerTag());
+            ecs.InsertComponent(new Entity(2,0), new PlayerTag());
 
             int executionCount = 0;
 

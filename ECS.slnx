@@ -4,6 +4,7 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+    <Project Path="sandbox/sandbox.csproj" />
   <Folder Name="/tests/">
     <Project Path="tests/Performance/Performance.csproj" />
     <Project Path="tests/UnitTestsECS/UnitTestsECS.csproj" />

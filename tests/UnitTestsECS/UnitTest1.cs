@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Xunit;
 using TECS;
+using TECS;
 using TECS.Commands;
 
 namespace TECS.Tests
@@ -192,7 +193,7 @@ namespace TECS.Tests
             ecs.InsertComponent(e2, new Position { X = 20, Y = 20 });
 
             // Act
-            ecs.DestroyEntity(e1.Id);
+            ecs.DestroyEntity(e1);
 
             // Assert
             // e1 is destroyed, so e2 should be the only component left, 
@@ -223,7 +224,7 @@ namespace TECS.Tests
             ecs.InsertComponent(e3, new Velocity());
 
             // Act
-            ecs.DestroyEntity(e2.Id); // Destroy the middle one
+            ecs.DestroyEntity(e2); // Destroy the middle one
 
             // Assert
             int loopCount = 0;

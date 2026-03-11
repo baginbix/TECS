@@ -3,22 +3,28 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace TECS
+namespace TECS;
+public readonly struct Entity : IEquatable<Entity>
 {
-    public readonly struct Entity
-    {
-        public int Id{get;}
-        public Entity(int id){
-            Id = id;
-        }
-
-
-        public bool Equals(Entity other) => Id == other.Id;
-        public bool Equals(int other) => Id == other;
-        public override int GetHashCode() => Id.GetHashCode();
-
-        // Implicit conversion to int
-        public static implicit operator int(Entity entity) => entity.Id;
-        public static implicit operator Entity(int id) => new Entity(id);
+    public readonly int Id;
+    public readonly int Version;
+    public Entity(int id, int version){
+        Id = id;
+        Version = version;
     }
+
+
+    public bool Equals(Entity other) => Id == other.Id && other.Version == Version;
+    public override bool Equals(object obj) 
+    {
+        return obj is Entity other && Equals(other);
+    }
+
+    public override int GetHashCode() 
+    {
+        return HashCode.Combine(Id, Version);
+    }
+
+    public static bool operator ==(Entity left, Entity right) => left.Equals(right);
+    public static bool operator !=(Entity left, Entity right) => !left.Equals(right);
 }
