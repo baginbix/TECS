@@ -48,6 +48,11 @@ namespace TECS
             return entity;
         }
 
+        public bool IsEntityAlive(Entity entity)
+        {
+            return entityManager.IsAlive(entity);
+        }
+
         public void AddSystem(ISystem system)
         {
             systems.Add(system);
