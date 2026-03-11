@@ -104,12 +104,11 @@ namespace TECS
         where E:struct
         where K:struct
         {
-            EntityQueryData<T,E,K> data = new()
-            {
-                Component1 =  GetOrCreateSet<T>().GetValue(entity),
-                Component2 =  GetOrCreateSet<E>().GetValue(entity),
-                Component3 =  GetOrCreateSet<K>().GetValue(entity),
-            };
+            EntityQueryData<T,E,K> data = new( 
+                ref GetOrCreateSet<T>().GetValue(entity),
+                ref GetOrCreateSet<E>().GetValue(entity),
+                ref GetOrCreateSet<K>().GetValue(entity) 
+            );
             return data;
         }
 
