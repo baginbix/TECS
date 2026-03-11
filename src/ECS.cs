@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Elev.Documents.GitHub.ECS.src.Query;
 using TECS.Commands;
 using TECS.Components;
 
@@ -93,7 +94,21 @@ namespace TECS
             return GetOrCreateSet<T>().GetDense();
         }
 
-        public void DestroyEntity(Entity id)
+        public EntityQueryData<T,E,K> QueryEntity<T,E,K>(Entity entity)
+        where T:struct
+        where E:struct
+        where K:struct
+        {
+            EntityQueryData<T,E,K> data = new()
+            {
+                Component1 =  GetOrCreateSet<T>().GetValue(entity),
+                Component2 =  GetOrCreateSet<E>().GetValue(entity),
+                Component3 =  GetOrCreateSet<K>().GetValue(entity),
+            };
+            return data;
+        }
+
+        public void DestroyEntity(Entity entity)
         {
             Bitset bitset = entityMasks[id];
 

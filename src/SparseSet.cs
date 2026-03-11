@@ -54,8 +54,9 @@ namespace TECS
             sparse[entity] = -1;
         }
 
-        public T GetValue(Entity entity){
-            return dense[sparse[entity]];
+        public ref T GetValue(Entity entity){
+            int index = sparse[entity.Id];
+            return ref CollectionsMarshal.AsSpan(dense)[index];
         }
 
         public List<T> GetDense(){
