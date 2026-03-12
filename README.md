@@ -1,7 +1,7 @@
 # TECS
 TECS is a performant ECS(Entity-Component-System) for C# created for education purposes, mainly for me.
 
-It uses a SparseSet implementation with plans of adding Archetypes to use whichever suits your program.
+It uses a SparseSet implementation with plans of adding Archetypes to allow for more flexible programs.
 
 **Note:** This project is a learning sandbox and is not currently meant for serious production use. I am building this to explore high-performance C# concepts, and I implement features that I find interesting or architecturally important rather than trying to build a fully-fledged commercial engine.
 
@@ -18,7 +18,6 @@ It uses a SparseSet implementation with plans of adding Archetypes to use whiche
 - Source generation
 - Event system
 - Multi-threading
-- ForEach having the option to use Entity (Next in line to be implemented)
 
 ## Limitations
 **These are limitations that exist right now! They are planned to change in the future.**
@@ -33,9 +32,6 @@ It uses a SparseSet implementation with plans of adding Archetypes to use whiche
 
 - **Component limit per query (`Query<T,E,K>()`)**
   You can currently only query up to 3 components at the same time. While needing more than 3 often implies a system is doing too much and should be rethought, options to query 4+ components will be added soon.
-
-- **No Entity Versioning (Generations)**
-  Entities do not currently use generational versioning. If an entity is destroyed and its ID is recycled, external references to that ID will not know the original entity died (the "stale pointer" problem).
 
 ## Installation
 There is no NuGet package for now but it might get added in the future. 

@@ -23,6 +23,8 @@ namespace TECS
         Dictionary<Type, object> resources;
         CommandBuffer commandBuffer = new();
 
+        bool stop = false;
+
         public ECS(int maxEntityCount = 1000)
         {
             components = new ISparseSet[100];
@@ -137,12 +139,26 @@ namespace TECS
 
         public void Run()
         {
+
             foreach (var system in systems)
             {
                 system.Run(this, ref commandBuffer);
             }
 
             commandBuffer.Flush(this);
+        }
+
+        public void RunLoop()
+        {
+            while (!stop)
+            {
+                Run();
+            }
+        }
+
+        public void Stop()
+        {
+            stop = true;
         }
 
         private void AddToGroup(Entity entity)
