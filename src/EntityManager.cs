@@ -32,7 +32,7 @@ namespace TECS
             return newEntity ;
         }
 
-        public void Deleted(Entity entity)
+        public void Free(Entity entity)
         {
             freeIds.Add(entity.Id);
             entityVersions[entity.Id]++;

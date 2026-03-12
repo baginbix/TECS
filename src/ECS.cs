@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Elev.Documents.GitHub.ECS.src.Query;
 using TECS.Commands;
 using TECS.Components;
+using tim.Dokument.GitHub.ECS.src;
 
 namespace TECS
 {
@@ -20,7 +21,7 @@ namespace TECS
 
         List<ISystem> systems;
 
-        Dictionary<Type, object> resources;
+        Dictionary<Type, IResource> resources;
         CommandBuffer commandBuffer = new();
 
         bool stop = false;
@@ -61,7 +62,7 @@ namespace TECS
             systems.Add(system);
         }
 
-        public void InsertResource<T>(T newResource)
+        public void InsertResource<T>(T newResource) where T:IResource
         {
             resources.Add(typeof(T), newResource);
         }
@@ -127,7 +128,9 @@ namespace TECS
             }
 
             entityMasks[entity.Id].ClearBits();
-            //TODO: Release ID back to EntityManager
+            
+            //Release ID back to EntityManager
+            entityManager.Free(entity);
         }
 
         public void RemoveComponent<T>(Entity entityId) where T : struct
