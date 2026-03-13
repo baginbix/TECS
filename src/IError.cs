@@ -4,7 +4,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
-namespace Elev.Documents.GitHub.ECS.src
+namespace TECS
 {
     public ref struct OptionRef<T>
     {

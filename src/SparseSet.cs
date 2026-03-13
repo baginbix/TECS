@@ -1,8 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
+
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
+using TECS;
 
 namespace TECS
 {
@@ -53,10 +51,17 @@ namespace TECS
             sparse[dense.Count] = denseId;
             sparse[entity.Id] = -1;
         }
-
+        /*
         public ref T GetValue(Entity entity){
             int index = sparse[entity.Id];
             return ref CollectionsMarshal.AsSpan(dense)[index];
+        }
+        */
+        public OptionRef<T> GetValue(Entity entity){
+            int index = sparse[entity.Id];
+            if(index == -1)
+                return  OptionRef<T>.None;
+            return new OptionRef<T>(ref CollectionsMarshal.AsSpan(dense)[index]);
         }
 
         public List<T> GetDense(){

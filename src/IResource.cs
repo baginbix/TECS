@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace tim.Dokument.GitHub.ECS.src
+namespace TECS
 {
     public interface IResource
     {}

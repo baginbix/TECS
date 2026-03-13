@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using Elev.Documents.GitHub.ECS.src.Query;
+using TECS.Query;
 using TECS.Commands;
 using TECS.Components;
-using tim.Dokument.GitHub.ECS.src;
+using TECS;
 
 namespace TECS
 {
@@ -108,9 +108,9 @@ namespace TECS
         where K:struct
         {
             EntityQueryData<T,E,K> data = new( 
-                ref GetOrCreateSet<T>().GetValue(entity),
-                ref GetOrCreateSet<E>().GetValue(entity),
-                ref GetOrCreateSet<K>().GetValue(entity) 
+                ref GetOrCreateSet<T>().GetValue(entity).Unwrap(),
+                ref GetOrCreateSet<E>().GetValue(entity).Unwrap(),
+                ref GetOrCreateSet<K>().GetValue(entity).Unwrap() 
             );
             return data;
         }
