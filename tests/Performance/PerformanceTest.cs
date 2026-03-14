@@ -15,6 +15,7 @@ public class EcsBenchmarks
     public struct Position { public float X; public float Y; }
     public struct Velocity { public float Dx; public float Dy; }
 
+
     public struct MoveSystem : IQueryAction<Position, Velocity>
     {
         public void Execute(ref Position p, ref Velocity v)
@@ -24,17 +25,25 @@ public class EcsBenchmarks
         }
     }
 
+    public struct MoveSystemOneComponent : IQueryAction<Position>
+    {
+        public void Execute(ref Position p)
+        {
+            p.X += 1;
+            p.Y += 1;
+        }
+    }
+
     private ECS ecs;
     private CommandBuffer cmd;
 
 
 
 
-    [Params(10,100,1000,10_000, 100_000, 1_000_000)] // BDN will automatically run the test for both sizes!
+    [Params(1_000_000)]
     public int EntityCount { get; set; }
 
-    // GlobalSetup runs ONCE before the benchmark starts. 
-    // We use it to populate the world.
+
     [GlobalSetup]
     public void Setup()
     {
@@ -51,7 +60,6 @@ public class EcsBenchmarks
         cmd.Flush(ecs);
     }
 
-    // This is the actual code being measured.
     [Benchmark]
     public void IterateQueryLambda()
     {
@@ -61,6 +69,24 @@ public class EcsBenchmarks
             p.X += v.Dx;
             p.Y += v.Dy;
         });
+    }
+
+    [Benchmark]
+    public void IterateQueryLambdaOneComponent()
+    {
+        var moveQuery = ecs.Query<Position>();
+        moveQuery.ForEach((ref Position p ) =>
+        {
+            p.X += 1;
+            p.Y += 1;
+        });
+    }
+
+    [Benchmark]
+    public void IterateIActionOneComponent()
+    {
+        var moveQuery = ecs.Query<Position>();
+        moveQuery.ForEach(new MoveSystemOneComponent());
     }
 
     [Benchmark]
@@ -100,4 +126,5 @@ public class EcsBenchmarks
             }
         }
     }
+
 }

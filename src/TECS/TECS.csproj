@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <OutputType>Library</OutputType>
+        <AssemblyName>TECS</AssemblyName>
+        <RootNamespace>TECS</RootNamespace>
+        <Authors>baginbix</Authors>
+        <Description>A high-performance Sparse-Set ECS for .NET</Description>
+        
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+</Project>

@@ -23,7 +23,7 @@ namespace TECS.Tests
         public int Value;
     }
 
-    public class TimeResource
+    public class TimeResource : IResource
     {
         public float DeltaTime;
     }
@@ -111,30 +111,6 @@ namespace TECS.Tests
 
             // Assert
             Assert.Empty(positions);
-        }
-
-        [Fact]
-        public void HasAll_TwoComponents_ShouldReturnOnlyEntitiesWithBoth()
-        {
-            // Arrange
-            var ecs = new ECS();
-
-            Entity e1 = ecs.CreateEntity(); // Only Position
-            ecs.InsertComponent(e1, new Position());
-
-            Entity e2 = ecs.CreateEntity(); // Only Velocity
-            ecs.InsertComponent(e2, new Velocity());
-
-            Entity e3 = ecs.CreateEntity(); // Both (The intersection!)
-            ecs.InsertComponent(e3, new Position());
-            ecs.InsertComponent(e3, new Velocity());
-
-            // Act
-            List<Entity> intersection = ecs.HasAll<Position, Velocity>();
-
-            // Assert
-            Assert.Single(intersection);
-            Assert.Equal(e3.Id, intersection[0].Id);
         }
 
         [Fact]

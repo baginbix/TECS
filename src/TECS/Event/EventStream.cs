@@ -5,7 +5,11 @@ using System.Threading.Tasks;
 
 namespace src.Event
 {
-    public struct EventStream<T>
+    public interface IEventStream
+    {
+        public void Flush();
+    }
+    public struct EventStream<T> : IEventStream where T : struct
     {
         private T[] events;
         private int count;
@@ -16,9 +20,9 @@ namespace src.Event
             count = 0;
         }
 
-        public void Push(in T eventData)
+        public void Send(in T eventData)
         {
-            if(count >= events.Length)
+            if (count >= events.Length)
             {
                 Array.Resize(ref events, events.Length * 2);
             }
@@ -30,7 +34,7 @@ namespace src.Event
             return new ReadOnlySpan<T>(events);
         }
 
-        public void Clear()
+        public void Flush()
         {
             count = 0;
         }

@@ -20,7 +20,6 @@ namespace TECS
         int[] sparse;
 
         public int Size => dense.Count;
-        public SparseSet():this(100){}
         public SparseSet(int size){
             dense = new List<T>(size);
             sparse =  new int[size];
@@ -42,13 +41,16 @@ namespace TECS
             }   
 
             int denseId = sparse[entity.Id];
-            dense[denseId] = dense[dense.Count-1];
-            denseEntities[denseId] = denseEntities[dense.Count-1];
+            int index = dense.Count - 1;
+            Entity lastEntity = denseEntities[index];
+
+            dense[denseId] = dense[index];
+            denseEntities[denseId] = denseEntities[index];
             
-            dense.RemoveAt(dense.Count-1);
+            dense.RemoveAt(index);
             denseEntities.RemoveAt(denseEntities.Count - 1);
 
-            sparse[dense.Count] = denseId;
+            sparse[lastEntity.Id] = denseId;
             sparse[entity.Id] = -1;
         }
         /*

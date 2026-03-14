@@ -5,6 +5,7 @@
     <Platform Name="x86" />
   </Configurations>
     <Project Path="sandbox/sandbox.csproj" />
+    <Projext Path="src/TECS.csproj" />
   <Folder Name="/tests/">
     <Project Path="tests/Performance/Performance.csproj" />
     <Project Path="tests/UnitTestsECS/UnitTestsECS.csproj" />

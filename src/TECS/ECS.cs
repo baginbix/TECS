@@ -4,6 +4,8 @@ using TECS.Query;
 using TECS.Commands;
 using TECS.Components;
 using TECS;
+using src.Event;
+using System.Diagnostics;
 
 namespace TECS
 {
@@ -23,6 +25,8 @@ namespace TECS
 
         Dictionary<Type, IResource> resources;
         CommandBuffer commandBuffer = new();
+        EventManager eventManager = new();
+        
 
         bool stop = false;
 
@@ -33,7 +37,7 @@ namespace TECS
             systems = new();
             groups = new();
             componentBitRegistry = new();
-            entityMasks = new Bitset[1000];
+            entityMasks = new Bitset[maxEntityCount];
             resources = new();
             MaxEntityCount = maxEntityCount;
 
@@ -107,10 +111,18 @@ namespace TECS
         where E:struct
         where K:struct
         {
+            var optT = GetOrCreateSet<T>().GetValue(entity);
+            var optE = GetOrCreateSet<E>().GetValue(entity);
+            var optK = GetOrCreateSet<K>().GetValue(entity);
+
+            if(optT.IsNone || optE.IsNone || optK.IsNone)
+            {
+                return EntityQueryData<T,E,K>.None;
+            }
             EntityQueryData<T,E,K> data = new( 
-                ref GetOrCreateSet<T>().GetValue(entity).Unwrap(),
-                ref GetOrCreateSet<E>().GetValue(entity).Unwrap(),
-                ref GetOrCreateSet<K>().GetValue(entity).Unwrap() 
+                ref optT.Unwrap(),
+                ref optE.Unwrap(),
+                ref optK.Unwrap()
             );
             return data;
         }
@@ -119,7 +131,7 @@ namespace TECS
         {
             Bitset bitset = entityMasks[entity.Id];
 
-            for (int i = 0; i < 64; i++)
+            for (int i = 0; i < components.Length; i++)
             {
                 if (bitset.HasBit(i))
                 {
@@ -137,6 +149,7 @@ namespace TECS
         {
             SparseSet<T> set = GetOrCreateSet<T>();
             set.Remove(entityId);
+            entityMasks[entityId.Id].ClearBit(ComponentID<T>.Value);
         }
 
 
@@ -149,6 +162,7 @@ namespace TECS
             }
 
             commandBuffer.Flush(this);
+            eventManager.Flush();
         }
 
         public void RunLoop()
@@ -175,40 +189,6 @@ namespace TECS
             group.Add(entity, entity);
         }
 
-        public List<Entity> HasAll<T, E>() where T : struct where E : struct
-        {
-            ISparseSet s1 = GetOrCreateSet<T>();
-            ISparseSet s2 = GetOrCreateSet<E>();
-            var smallest = s1.Size < s2.Size ? s1 : s2;
-            var other = s1.Size < s2.Size ? s2 : s1;
-
-            List<Entity> entities = new List<Entity>(smallest.Size);
-
-            var smallestEntities = smallest.GetEntities();
-            for (int i = 0; i < smallestEntities.Count; i++)
-            {
-                if (other.Contains(smallestEntities[i]))
-                {
-                    entities.Add(smallestEntities[i]);
-                }
-            }
-            return entities;
-        }
-
-        public List<Entity> HasAll<T, E, K>()
-        {
-            Bitset bitset = new Bitset();
-            bitset.SetBit(componentBitRegistry.GetComponentBit<T>());
-            bitset.SetBit(componentBitRegistry.GetComponentBit<E>());
-            bitset.SetBit(componentBitRegistry.GetComponentBit<K>());
-            return groups[bitset].GetDense();
-        }
-
-        public List<T> Has<T>(Entity entity) where T : struct
-        {
-            throw new NotImplementedException();
-        }
-
         public Query<T> Query<T>()
         where T : struct
         {
@@ -233,6 +213,16 @@ namespace TECS
         public List<T> GetComponentList<T>() where T : struct
         {
             return GetOrCreateSet<T>().GetDense();
+        }
+
+        public void SendEvent<TEvent>(in TEvent @event) where TEvent: struct
+        {
+            eventManager.SendEvent<TEvent>(in @event);
+        }
+
+        public ReadOnlySpan<TEvent> ReadEvents<TEvent>() where TEvent: struct
+        {
+            return eventManager.ReadEvents<TEvent>();
         }
 
     }
