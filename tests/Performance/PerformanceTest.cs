@@ -40,7 +40,7 @@ public class EcsBenchmarks
 
 
 
-    [Params(1_000_000)]
+    [Params(100_000)]
     public int EntityCount { get; set; }
 
 

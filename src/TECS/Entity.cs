@@ -15,7 +15,7 @@ public readonly struct Entity : IEquatable<Entity>
 
 
     public bool Equals(Entity other) => Id == other.Id && other.Version == Version;
-    public override bool Equals(object obj) 
+    public override bool Equals(object? obj) 
     {
         return obj is Entity other && Equals(other);
     }

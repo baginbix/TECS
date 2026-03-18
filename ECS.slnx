@@ -5,8 +5,15 @@
     <Platform Name="x86" />
   </Configurations>
     <Project Path="sandbox/sandbox.csproj" />
-    <Projext Path="src/TECS.csproj" />
-  <Folder Name="/tests/">
+
+  <Folder Name="/TECS/">
+    <Project Path="src/TECS/TECS.csproj" />
+  </Folder>
+  <Folder Name="/Examples/">
+    <Project Path="src/examples/Event/Event.csproj" />
+    <Project Path="src/examples/Basics/Basics.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
     <Project Path="tests/Performance/Performance.csproj" />
     <Project Path="tests/UnitTestsECS/UnitTestsECS.csproj" />
   </Folder>
