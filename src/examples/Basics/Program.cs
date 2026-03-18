@@ -9,7 +9,7 @@ using TECS.Commands;
 Console.WriteLine("Initializing TECS...");
 
 // Create the ECS world
-ECS ecs = new ECS(1000);
+ECS ecs = new ECS(1_000_000);
 
 // Register the system
 ecs.AddSystem(new MovementSystem());

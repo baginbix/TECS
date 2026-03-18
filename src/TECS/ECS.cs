@@ -9,6 +9,17 @@ using System.Diagnostics;
 
 namespace TECS
 {
+    public enum SystemPhase
+    {
+        Initialization = 0, // Spawning, resetting frame data
+        Input = 1,          // Reading keyboard/mouse
+        PreUpdate = 2,      // AI decisions, pathfinding
+        Update = 3,         // General game logic (Default)
+        Physics = 4,        // Movement, collision resolution
+        PostUpdate = 5,     // Camera tracking, cleanup
+        Render = 6,         // Drawing to the screen
+        Count = 7           // Magic trick: Gives us the exact size needed for the array
+    }
     public class ECS
     {
         readonly int MaxEntityCount = 1_000_000;
@@ -21,7 +32,7 @@ namespace TECS
 
         Bitset[] entityMasks;
 
-        List<ISystem> systems;
+        List<ISystem>[] systemGroups;
 
         Dictionary<Type, IResource> resources;
         CommandBuffer commandBuffer = new();
@@ -34,7 +45,12 @@ namespace TECS
         {
             components = new ISparseSet[100];
             entityManager = new();
-            systems = new();
+            systemGroups = new List<ISystem>[(int)SystemPhase.Count];
+            systemGroups = new List<ISystem>[(int)SystemPhase.Count];
+            for (int i = 0; i < systemGroups.Length; i++)
+            {
+                systemGroups[i] = new List<ISystem>();
+            }
             groups = new();
             componentBitRegistry = new();
             entityMasks = new Bitset[maxEntityCount];
@@ -61,9 +77,9 @@ namespace TECS
             return entityManager.IsAlive(entity);
         }
 
-        public void AddSystem(ISystem system)
+        public void AddSystem(SystemPhase phase,ISystem system)
         {
-            systems.Add(system);
+            systemGroups[(int)phase].Add(system);
         }
 
         public void InsertResource<T>(T newResource) where T:IResource
@@ -155,10 +171,14 @@ namespace TECS
 
         public void Run()
         {
-
-            foreach (var system in systems)
+            for (int i = 0; i < systemGroups.Length; i++)
             {
-                system.Run(this, ref commandBuffer);
+                var currentPhaseGroup = systemGroups[i];
+                foreach (var system in currentPhaseGroup)
+                {
+                    system.Run(this, ref commandBuffer);
+                }
+                
             }
 
             commandBuffer.Flush(this);

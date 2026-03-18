@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace TECS
 {
-    public struct Bitset
+    public record struct Bitset
     {
         public ulong bits;
 
