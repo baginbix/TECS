@@ -2,7 +2,15 @@ using TECS.Commands;
 
 namespace TECS.Systems;
 
-public class StateManager<TState> where TState: Enum
+public interface IStateManager
+{
+    void Initialize(ECS ecs, ref CommandBuffer cmd);
+    void ProcessTransitions(ECS ecs, ref CommandBuffer cmd);
+    void RunActiveState(ECS ecs, ref CommandBuffer cmd);
+
+}
+
+public class StateManager<TState> :IStateManager where TState: Enum
 {
     private Stack<TState> activeStates = new();
     private TState? nextState;
@@ -23,6 +31,12 @@ public class StateManager<TState> where TState: Enum
             onExit[state] = new();
         }
     }
+
+    public void Initialize(ECS ecs, ref CommandBuffer cmd)
+    {
+        foreach(var sys in onEnter[CurrentState])
+            sys.Run(ecs, ref cmd);
+    }
     
     public TState CurrentState => activeStates.Peek();
 
@@ -38,6 +52,30 @@ public class StateManager<TState> where TState: Enum
 
     public void ProcessTransitions(ECS ecs, ref CommandBuffer cmd)
     {
-        
+        if(!isTransitioning || nextState == null)
+            return;
+
+        TState oldState = CurrentState;
+        TState newState = nextState;
+
+        foreach(var system in onExit[oldState]) 
+            system.Run(ecs, ref cmd);
+
+        activeStates.Pop();
+        activeStates.Push(newState);
+
+        isTransitioning = false;
+        nextState = default;
+
+        foreach(var sys in onEnter[newState])
+            sys.Run(ecs, ref cmd);
+    }
+
+    public void RunActiveState(ECS ecs, ref CommandBuffer cmd)
+    {
+        foreach (var sys in onUpdate[CurrentState])
+        {
+            sys.Run(ecs, ref cmd);
+        }
     }
 }
