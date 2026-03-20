@@ -18,6 +18,7 @@ ecs.AddSystem(new MovementSystem());
 Entity bullet = ecs.CreateEntity();
 ecs.InsertComponent(bullet, new Position { X = 0, Y = 0 });
 ecs.InsertComponent(bullet, new Velocity { X = 10, Y = 0 }); // Moves 10 on the X axis
+ecs.InsertComponent(bullet, new Health(100));
 
 // Create Entity 2: A slow zombie
 Entity zombie = ecs.CreateEntity();
@@ -41,7 +42,8 @@ Console.ReadLine();
 // --- Define Components (Pure Data) ---
 public record struct Position(float X, float Y); 
 
-public record struct Velocity(float X, float Y); 
+public record struct Velocity(float X, float Y);
+public record struct Health(float Hp);
 
 // --- Define Systems (Pure Logic) ---
 public class MovementSystem : ISystem

@@ -5,8 +5,7 @@ using System.Threading.Tasks;
 
 namespace TECS
 {
-    //TODO: Implement entity recycling
-    public class EntityManager
+    internal class EntityManager
     {
         private int nextId = 0;
 

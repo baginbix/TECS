@@ -1,4 +1,5 @@
 
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace TECS
@@ -17,21 +18,27 @@ namespace TECS
         List<T> dense;
         List<Entity> denseEntities = new List<Entity>();
         int[] sparse;
+        private static readonly bool isTag = typeof(T).GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).Length == 0;
 
         public int Size => dense.Count;
         public SparseSet(int size){
-            dense = new List<T>(size);
+            dense = !isTag ? new List<T>(size) : new List<T>(0);
             sparse =  new int[size];
             Array.Fill(sparse, -1);
         }
         public void Add(Entity entity, T data){
             if(sparse[entity.Id] != -1){
-                dense[sparse[entity.Id]] = data;
+                if(!isTag)
+                    dense[sparse[entity.Id]] = data;
                 return;
-            }         
-            dense.Add(data);
+            }
+
+            if (!isTag)
+            {
+                dense.Add(data);
+            }
             denseEntities.Add(entity);
-            sparse[entity.Id] = dense.Count-1;
+            sparse[entity.Id] = denseEntities.Count-1;
         }
 
         public void Remove(Entity entity){
@@ -40,13 +47,18 @@ namespace TECS
             }   
 
             int denseId = sparse[entity.Id];
-            int index = dense.Count - 1;
+            int index = denseEntities.Count - 1;
             Entity lastEntity = denseEntities[index];
 
-            dense[denseId] = dense[index];
+            if (!isTag)
+            {
+                dense[denseId] = dense[index];
+                dense.RemoveAt(index);
+            }
+                
             denseEntities[denseId] = denseEntities[index];
             
-            dense.RemoveAt(index);
+            
             denseEntities.RemoveAt(denseEntities.Count - 1);
 
             sparse[lastEntity.Id] = denseId;

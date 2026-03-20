@@ -6,23 +6,16 @@ using TECS.Components;
 using TECS;
 using src.Event;
 using System.Diagnostics;
+using TECS.Plugins;
+using TECS.Systems;
 
 namespace TECS
 {
-    public enum SystemPhase
-    {
-        Initialization = 0, // Spawning, resetting frame data
-        Input = 1,          // Reading keyboard/mouse
-        PreUpdate = 2,      // AI decisions, pathfinding
-        Update = 3,         // General game logic (Default)
-        Physics = 4,        // Movement, collision resolution
-        PostUpdate = 5,     // Camera tracking, cleanup
-        Render = 6,         // Drawing to the screen
-        Count = 7           // Magic trick: Gives us the exact size needed for the array
-    }
+
+
     public class ECS
     {
-        readonly int MaxEntityCount = 1_000_000;
+        readonly int MaxEntityCount;
         EntityManager entityManager;
         ISparseSet[] components;
 
@@ -30,12 +23,9 @@ namespace TECS
 
         ComponentBitRegistry componentBitRegistry;
 
-        Bitset[] entityMasks;
-
-        List<ISystem>[] systemGroups;
+        private Bitset[] entityMasks;
 
         Dictionary<Type, IResource> resources;
-        CommandBuffer commandBuffer = new();
         EventManager eventManager = new();
         
 
@@ -45,12 +35,6 @@ namespace TECS
         {
             components = new ISparseSet[100];
             entityManager = new();
-            systemGroups = new List<ISystem>[(int)SystemPhase.Count];
-            systemGroups = new List<ISystem>[(int)SystemPhase.Count];
-            for (int i = 0; i < systemGroups.Length; i++)
-            {
-                systemGroups[i] = new List<ISystem>();
-            }
             groups = new();
             componentBitRegistry = new();
             entityMasks = new Bitset[maxEntityCount];
@@ -60,6 +44,7 @@ namespace TECS
         }
 
         public ECS() : this(1_000) { }
+
 
         public Entity CreateEntity()
         {
@@ -77,10 +62,6 @@ namespace TECS
             return entityManager.IsAlive(entity);
         }
 
-        public void AddSystem(SystemPhase phase,ISystem system)
-        {
-            systemGroups[(int)phase].Add(system);
-        }
 
         public void InsertResource<T>(T newResource) where T:IResource
         {
@@ -168,36 +149,6 @@ namespace TECS
             entityMasks[entityId.Id].ClearBit(ComponentID<T>.Value);
         }
 
-
-        public void Run()
-        {
-            for (int i = 0; i < systemGroups.Length; i++)
-            {
-                var currentPhaseGroup = systemGroups[i];
-                foreach (var system in currentPhaseGroup)
-                {
-                    system.Run(this, ref commandBuffer);
-                }
-                
-            }
-
-            commandBuffer.Flush(this);
-            eventManager.Flush();
-        }
-
-        public void RunLoop()
-        {
-            while (!stop)
-            {
-                Run();
-            }
-        }
-
-        public void Stop()
-        {
-            stop = true;
-        }
-
         private void AddToGroup(Entity entity)
         {
             Bitset bitset = entityMasks[entity.Id];
@@ -243,6 +194,11 @@ namespace TECS
         public ReadOnlySpan<TEvent> ReadEvents<TEvent>() where TEvent: struct
         {
             return eventManager.ReadEvents<TEvent>();
+        }
+
+        public void Flush()
+        {
+            eventManager.Flush();
         }
 
     }
