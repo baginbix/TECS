@@ -16,6 +16,14 @@ public class App
         systemManager = new (ecs);
     }
 
+    public App AddState<TState>(TState startState) where TState : struct, Enum
+    {
+        var stateManger = new StateManager<TState>(startState);
+        systemManager.AddStateManager(stateManger);
+        ecs.InsertResource(stateManger);
+        return this;
+    }
+
     public App AddPlugin<TPlugin>() where TPlugin : IPlugin, new()
     {
         IPlugin plugin = new TPlugin();

@@ -10,7 +10,7 @@ public interface IStateManager
 
 }
 
-public class StateManager<TState> :IStateManager where TState: Enum
+public class StateManager<TState> :IStateManager,IResource where TState: struct, Enum
 {
     private Stack<TState> activeStates = new();
     private TState? nextState;
@@ -56,7 +56,7 @@ public class StateManager<TState> :IStateManager where TState: Enum
             return;
 
         TState oldState = CurrentState;
-        TState newState = nextState;
+        TState newState = nextState.Value;
 
         foreach(var system in onExit[oldState]) 
             system.Run(ecs, ref cmd);

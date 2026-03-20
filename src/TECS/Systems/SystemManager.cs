@@ -23,6 +23,8 @@ namespace TECS.Systems
     {
         private readonly ECS ecs;
         private readonly List<ISystem>[] systemGroups;
+        
+        private List<IStateManager> stateManagers ; 
 
         private CommandBuffer commandBuffer;
 
@@ -35,11 +37,17 @@ namespace TECS.Systems
                 systemGroups[i] = new List<ISystem>();
             }
             commandBuffer = new();
+            stateManagers = new();
         }
 
         public void Add(SystemPhase phase, ISystem system)
         {
             systemGroups[(int)phase].Add(system);
+        }
+
+        public void AddStateManager(IStateManager manager)
+        {
+            stateManagers.Add(manager);
         }
 
         public void OnStart()
@@ -51,10 +59,22 @@ namespace TECS.Systems
             }
             
             commandBuffer.Flush(ecs);
+
+            foreach (var sm in stateManagers)
+            {
+                sm.Initialize(ecs, ref commandBuffer);
+            }
+            commandBuffer.Flush(ecs);
         }
         
         public void UpdateSystems()
         {
+            foreach (var sm in stateManagers)
+            {
+                sm.ProcessTransitions(ecs, ref commandBuffer);
+            }
+            
+            
             int startPhase = (int)SystemPhase.InitializeFrame;
             for (int i = startPhase; i < systemGroups.Length; i++)
             {
@@ -64,6 +84,11 @@ namespace TECS.Systems
                     system.Run(ecs, ref commandBuffer);
                 }
                 
+            }
+
+            foreach (var sm in stateManagers)
+            {
+                sm.RunActiveState(ecs, ref commandBuffer);
             }
             
             commandBuffer.Flush(ecs);
