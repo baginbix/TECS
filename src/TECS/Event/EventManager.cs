@@ -24,6 +24,11 @@ namespace src.Event
             return (EventStream<T>)eventStream;
         }
 
+        public ReadOnlySpan<T> GetAllEvents<T>() where T : struct
+        {
+            return GetOrCreateEventStream<T>().Read();
+        }
+
         public void Flush()
         {
             foreach(var eventStream in eventStreams)

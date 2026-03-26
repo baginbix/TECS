@@ -9,24 +9,30 @@ namespace src.Event
     {
         public void Flush();
     }
-    public struct EventStream<T> : IEventStream where T : struct
+    public class EventStream<T> : IEventStream where T : struct
     {
         private T[] events;
-        private int count;
+        private int activeCount;
+
+        private int oldestEventId = 0;
+        
+        public int TotalEventsFired => activeCount + oldestEventId;
+
+        private int eventsFromLastFrameCount = 0;
 
         public EventStream()
         {
-            events = new T[10];
-            count = 0;
+            events = new T[16];
+            activeCount = 0;
         }
 
         public void Send(in T eventData)
         {
-            if (count >= events.Length)
+            if (activeCount >= events.Length)
             {
                 Array.Resize(ref events, events.Length * 2);
             }
-            events[count++] = eventData;
+            events[activeCount++] = eventData;
         }
 
         public ReadOnlySpan<T> Read()
@@ -36,7 +42,10 @@ namespace src.Event
 
         public void Flush()
         {
-            count = 0;
+            int newEventsThisFrame = activeCount - eventsFromLastFrameCount;
+            
+            if(eventsFromLastFrameCount == events.Length)
+                activeCount = 0;
         }
     }
 }

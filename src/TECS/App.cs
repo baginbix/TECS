@@ -1,5 +1,8 @@
+using System.Diagnostics;
+using Microsoft.VisualBasic.CompilerServices;
 using TECS.Plugins;
 using TECS.Systems;
+using TECS.Time;
 
 namespace TECS;
 
@@ -81,6 +84,58 @@ public class App
     {
         return AddSystem(SystemPhase.Update, system);
     }
+    
+    public App AddSystemOnEnter<TState>(TState state, ISystem system) 
+        where TState : struct, Enum
+    {
+        var stateManager = ecs.GetResource<StateManager<TState>>();
+        stateManager.AddEnterSystem(state, system);
+        return this;
+    }
+    
+    public App AddSystemOnUpdate<TState>(TState state, ISystem system) 
+        where TState : struct, Enum
+    {
+        var stateManager = ecs.GetResource<StateManager<TState>>();
+        stateManager.AddUpdateSystem(state, system);
+        return this;
+    }
+    
+    public App AddSystemOnExit<TState>(TState state, ISystem system) 
+        where TState : struct, Enum
+    {
+        var stateManager = ecs.GetResource<StateManager<TState>>();
+        stateManager.AddExitSystem(state, system);
+        return this;
+    }
+    
+    
+    public App AddSystemOnEnter<TState, TSystem>(TState state) 
+        where TState : struct, Enum
+        where TSystem : ISystem, new()
+    {
+        var stateManager = ecs.GetResource<StateManager<TState>>();
+        stateManager.AddEnterSystem(state, new TSystem());
+        return this;
+    }
+    
+    public App AddSystemOnUpdate<TState, TSystem>(TState state) 
+        where TState : struct, Enum
+        where TSystem : ISystem, new()
+    {
+        var stateManager = ecs.GetResource<StateManager<TState>>();
+        stateManager.AddUpdateSystem(state, new TSystem());
+        return this;
+    }
+    
+    public App AddSystemOnExit<TState, TSystem>(TState state) 
+        where TState : struct, Enum
+        where TSystem : ISystem, new()
+    {
+        var stateManager = ecs.GetResource<StateManager<TState>>();
+        stateManager.AddExitSystem(state, new TSystem());
+        return this;
+    }
 
     public App AddResource(IResource resource) 
     {
@@ -98,9 +153,21 @@ public class App
 
     public void RunLoop()
     {
+        Time.Time timeResource = new Time.Time();
+        ecs.InsertResource(timeResource);
+        
         systemManager.OnStart();
+
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        long lastTick = stopwatch.ElapsedTicks;
         while (run)
         {
+            long currentTick = stopwatch.ElapsedTicks;
+            timeResource.DeltaTime = (float)(currentTick - lastTick);
+            timeResource.TotalTime = (float)stopwatch.Elapsed.TotalSeconds;
+            lastTick = currentTick;
+            
+            
             systemManager.UpdateSystems(); 
             ecs.Flush();
         }
