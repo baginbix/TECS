@@ -7,26 +7,15 @@ namespace src.Event
         {
             GetOrCreateEventStream<T>().Send(e);
         }
-
-        public ReadOnlySpan<IEvent> ReadEvents<IEvent>() where IEvent:struct
-        {
-            var eventStream = GetOrCreateEventStream<IEvent>();
-            return eventStream.Read();
-        }
-        private EventStream<T> GetOrCreateEventStream<T>() where T: struct
+        internal EventStream<T> GetOrCreateEventStream<T>() where T: struct
         {
             IEventStream eventStream;
             if(!eventStreams.TryGetValue(typeof(T), out eventStream)){
-                eventStreams.Add(typeof(T), new EventStream<T>());
-                eventStream = eventStreams[typeof(T)];
+                eventStream = new EventStream<T>();
+                eventStreams.Add(typeof(T), eventStream);
             }
 
             return (EventStream<T>)eventStream;
-        }
-
-        public ReadOnlySpan<T> GetAllEvents<T>() where T : struct
-        {
-            return GetOrCreateEventStream<T>().Read();
         }
 
         public void Flush()

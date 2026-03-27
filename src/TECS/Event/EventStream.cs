@@ -11,20 +11,14 @@ namespace src.Event
     }
     public class EventStream<T> : IEventStream where T : struct
     {
-        private T[] events;
-        private int activeCount;
+        private T[] events = new T[16];
+        private int activeCount = 0;
 
         private int oldestEventId = 0;
         
         public int TotalEventsFired => activeCount + oldestEventId;
 
         private int eventsFromLastFrameCount = 0;
-
-        public EventStream()
-        {
-            events = new T[16];
-            activeCount = 0;
-        }
 
         public void Send(in T eventData)
         {
@@ -34,10 +28,12 @@ namespace src.Event
             }
             events[activeCount++] = eventData;
         }
-
-        public ReadOnlySpan<T> Read()
+        
+        public ReadOnlySpan<T> Read(out int oldestId, out int totalFired)
         {
-            return new ReadOnlySpan<T>(events);
+            oldestId = oldestEventId;
+            totalFired = TotalEventsFired;
+            return new ReadOnlySpan<T>(events,0,activeCount);
         }
 
         public void Flush()

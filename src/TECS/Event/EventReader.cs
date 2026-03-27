@@ -1,25 +1,31 @@
+using System.Data.Common;
+
 namespace src.Event;
 
 public class EventReader<T> where T: struct
 {
-    private int cursor;
+    private int lastReadEventId = 0;
 
     public ReadOnlySpan<T> Read(EventManager manager)
     {
-        var allEvents = manager.GetAllEvents<T>();
-        int eventAmount = allEvents.Length;
-        if (cursor > eventAmount)
-        {
-            cursor = 0;
-        }
+        var stream = manager.GetOrCreateEventStream<T>();
+        var span = stream.Read(out int oldestId, out int totalFired);
 
-        if (cursor == eventAmount)
+        if(lastReadEventId < oldestId)
+        {
+            lastReadEventId = oldestId;
+        }
+        
+        if(lastReadEventId == totalFired)
         {
             return ReadOnlySpan<T>.Empty;
         }
 
-        var newEvents = allEvents[cursor..];
-        cursor = eventAmount;
-        return newEvents;
+        int unreadCount = totalFired - lastReadEventId;
+        int startIndex = span.Length - unreadCount;
+
+        lastReadEventId = totalFired;
+
+        return span[startIndex..unreadCount];
     }
 }
