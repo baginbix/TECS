@@ -9,8 +9,15 @@ namespace src.Event
     {
         public void Flush();
     }
+
     public class EventStream<T> : IEventStream where T : struct
     {
+        public ref struct EventReadData
+        {
+            public ReadOnlySpan<T> Data;
+            public int OldestID;
+            public int TotalFired;
+        }
         private T[] events = new T[16];
         private int activeCount = 0;
 
@@ -28,12 +35,14 @@ namespace src.Event
             }
             events[activeCount++] = eventData;
         }
-        
-        public ReadOnlySpan<T> Read(out int oldestId, out int totalFired)
+
+        public EventReadData Read()
         {
-            oldestId = oldestEventId;
-            totalFired = TotalEventsFired;
-            return new ReadOnlySpan<T>(events,0,activeCount);
+            EventReadData readData = new();
+            readData.Data = new ReadOnlySpan<T>(events,0,activeCount);
+            readData.OldestID = oldestEventId;
+            readData.TotalFired = TotalEventsFired;
+            return readData;
         }
 
         public void Flush()

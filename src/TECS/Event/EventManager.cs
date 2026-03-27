@@ -18,7 +18,7 @@ namespace src.Event
             return (EventStream<T>)eventStream;
         }
 
-        public void Flush()
+        internal void Flush()
         {
             foreach(var eventStream in eventStreams)
             {

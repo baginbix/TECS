@@ -9,23 +9,23 @@ public class EventReader<T> where T: struct
     public ReadOnlySpan<T> Read(EventManager manager)
     {
         var stream = manager.GetOrCreateEventStream<T>();
-        var span = stream.Read(out int oldestId, out int totalFired);
+        var readData = stream.Read();
 
-        if(lastReadEventId < oldestId)
+        if(lastReadEventId < readData.OldestID)
         {
-            lastReadEventId = oldestId;
+            lastReadEventId = readData.OldestID;
         }
         
-        if(lastReadEventId == totalFired)
+        if(lastReadEventId == readData.TotalFired)
         {
             return ReadOnlySpan<T>.Empty;
         }
 
-        int unreadCount = totalFired - lastReadEventId;
-        int startIndex = span.Length - unreadCount;
+        int unreadCount = readData.TotalFired - lastReadEventId;
+        int startIndex = readData.Data.Length - unreadCount;
 
-        lastReadEventId = totalFired;
+        lastReadEventId = readData.TotalFired;
 
-        return span[startIndex..unreadCount];
+        return readData.Data[startIndex..unreadCount];
     }
 }
