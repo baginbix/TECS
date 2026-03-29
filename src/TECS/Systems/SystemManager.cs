@@ -55,6 +55,7 @@ namespace TECS.Systems
             var startupPhaseGroup = systemGroups[0];
             foreach (var system in startupPhaseGroup)
             {
+                ecs.SetActiveSystem(system.GetType());
                 system.Run(ecs, ref commandBuffer);
             }
             
@@ -81,6 +82,7 @@ namespace TECS.Systems
                 var currentPhaseGroup = systemGroups[i];
                 foreach (var system in currentPhaseGroup)
                 {
+                    ecs.SetActiveSystem(system.GetType());
                     system.Run(ecs, ref commandBuffer);
                 }
                 

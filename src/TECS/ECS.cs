@@ -8,6 +8,7 @@ using src.Event;
 using System.Diagnostics;
 using TECS.Plugins;
 using TECS.Systems;
+using TECS.Event;
 
 namespace TECS
 {
@@ -26,7 +27,12 @@ namespace TECS
         private Bitset[] entityMasks;
 
         Dictionary<Type, IResource> resources;
+
+        Dictionary<Type, IEventWriter> cachedReasers;
+        Dictionary<(Type systemType,Type eventType), IEventReader> cachedReaders;
         EventManager eventManager = new();
+
+        private Type activeSystem;
         
 
         bool stop = false;
@@ -46,6 +52,7 @@ namespace TECS
         public ECS() : this(1_000) { }
 
 
+        public void SetActiveSystem(Type system) => activeSystem = system;
         public Entity CreateEntity()
         {
             Entity entity = entityManager.GetId();
@@ -186,14 +193,27 @@ namespace TECS
             return GetOrCreateSet<T>().GetDense();
         }
 
-        public void SendEvent<TEvent>(in TEvent @event) where TEvent: struct
+        [Obsolete("This method had been depracated. Use ECS.GetEventWriter()")]
+        internal void SendEvent<TEvent>(in TEvent @event) where TEvent: struct
         {
             eventManager.SendEvent<TEvent>(in @event);
         }
 
-        public ReadOnlySpan<TEvent> ReadEvents<TEvent>() where TEvent: struct
+        public EventWriter<TEvent> GetEventWriter<TEvent>() where TEvent:struct
         {
-            return eventManager.ReadEvents<TEvent>();
+            EventWriter<TEvent> writer = new (eventManager);
+            return writer;
+        }
+
+        public EventReader<TEvent> ReadEvents<TEvent>() where TEvent: struct
+        {
+            if (!cachedReaders.TryGetValue((activeSystem.GetType(), typeof(TEvent)), out var reader))
+            {
+                reader = new EventReader<TEvent>(eventManager);
+                cachedReaders.Add((activeSystem.GetType(), typeof(TEvent)), reader);
+            }
+             
+            return (EventReader<TEvent>)reader;
         }
 
         public void Flush()
@@ -202,4 +222,4 @@ namespace TECS
         }
 
     }
-}
+} 

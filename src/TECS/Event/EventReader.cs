@@ -2,11 +2,13 @@ using System.Data.Common;
 
 namespace src.Event;
 
-public class EventReader<T> where T: struct
+interface IEventReader{}
+public class EventReader<T>(EventManager manager) : IEventReader where T: struct
 {
     private int lastReadEventId = 0;
+ 
 
-    public ReadOnlySpan<T> Read(EventManager manager)
+    public ReadOnlySpan<T> Read(  )
     {
         var stream = manager.GetOrCreateEventStream<T>();
         var readData = stream.Read();
