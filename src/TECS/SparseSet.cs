@@ -16,6 +16,7 @@ namespace TECS
     public class SparseSet<T> : ISparseSet
     {
         List<T> dense;
+        List<ulong> ticks;
         List<Entity> denseEntities = new List<Entity>();
         int[] sparse;
         private static readonly bool isTag = typeof(T).GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).Length == 0;
@@ -25,17 +26,20 @@ namespace TECS
             dense = !isTag ? new List<T>(size) : new List<T>(0);
             sparse =  new int[size];
             Array.Fill(sparse, -1);
+            ticks = new List<ulong>(size);
         }
-        public void Add(Entity entity, T data){
+        public void Add(Entity entity, T data, ulong currentTick){
             if(sparse[entity.Id] != -1){
                 if(!isTag)
                     dense[sparse[entity.Id]] = data;
+                ticks[entity.Id] = currentTick;
                 return;
             }
 
             if (!isTag)
             {
                 dense.Add(data);
+                ticks.Add(currentTick);
             }
             denseEntities.Add(entity);
             sparse[entity.Id] = denseEntities.Count-1;
@@ -70,10 +74,11 @@ namespace TECS
             return ref CollectionsMarshal.AsSpan(dense)[index];
         }
         */
-        public OptionRef<T> GetValue(Entity entity){
+        public OptionRef<T> GetValue(Entity entity, ulong currentTick){
             int index = sparse[entity.Id];
             if(index == -1)
                 return  OptionRef<T>.None;
+            ticks[entity.Id] = currentTick;
             return new OptionRef<T>(ref CollectionsMarshal.AsSpan(dense)[index]);
         }
 
@@ -90,6 +95,8 @@ namespace TECS
         {
             return denseEntities;
         }
+
+        public Span<ulong> GetLastTicks() => CollectionsMarshal.AsSpan(ticks);
 
         public int[] GetSparseSet() => sparse;
     }

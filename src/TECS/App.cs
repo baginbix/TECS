@@ -146,6 +146,7 @@ public class App
     
     public void Run()
     {
+        ecs.NextTick();
         systemManager.OnStart();
         systemManager.UpdateSystems(); 
         ecs.Flush();

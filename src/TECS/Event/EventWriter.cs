@@ -6,7 +6,11 @@ using src.Event;
 
 namespace TECS.Event
 {
-    public class EventWriter<T>(EventManager manager)  where T: struct
+    public interface IEventWriter
+    {
+
+    }
+    public class EventWriter<T>(EventManager manager):IEventWriter  where T: struct
     {
         private EventStream<T> stream;
 

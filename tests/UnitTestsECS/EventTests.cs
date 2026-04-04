@@ -8,14 +8,15 @@ namespace UnitTestsECS
     public record struct MockEvent(int damage);
     public struct MockSystemSendEvent: ISystem
     {
-        public void Run(ECS ecs, ref CommandBuffer cmd)
+        public void Run(IEngine ecs, ref CommandBuffer cmd)
         {
-            ecs.SendEvent<MockEvent>(new());
+            var e = new MockEvent(5);
+            ecs.GetEventWriter<MockEvent>().Send(ref e);
         }
     }
     public struct MockSystemReadEvent : ISystem
     {
-         public void Run(ECS ecs, ref CommandBuffer cmd)
+         public void Run(IEngine ecs, CommandBuffer cmd)
         {
             var allEvents = ecs.ReadEvents<MockEvent>();
             allEvents.Read();
@@ -36,7 +37,6 @@ namespace UnitTestsECS
             App app = SetupApp();
 
             app.Run();
-            Assert.True(app.GetType)
         }
     }
 }

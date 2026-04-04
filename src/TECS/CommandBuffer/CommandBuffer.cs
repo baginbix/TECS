@@ -2,16 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using TECS.Entities;
 
 namespace TECS.Commands;
 
 //TODO: fix how fake ids work, they should take into account that inserting into real entities is a possibility
-public struct CommandBuffer
+public class CommandBuffer
 {
     struct CommandItem
     {
@@ -40,11 +42,11 @@ public struct CommandBuffer
         entitiesToBeDestroyed.Add(id);
     }
 
-    public Entity SpawnEntity()
+    public EntityBuilder SpawnEntity()
     {
         var entity = GenerateID();
         entitiesToSpawn.Add(entity);
-        return entity;
+        return new EntityBuilder(this, entity);
     }
 
     public void InsertComponent<T>(T component, Entity entity)

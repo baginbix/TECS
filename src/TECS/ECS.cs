@@ -13,9 +13,18 @@ using TECS.Event;
 namespace TECS
 {
 
-
-    public class ECS
+    public interface IEngine
     {
+        Query<T> Query<T>() where T : struct;
+        Query<T, E> Query<T, E>() where T : struct where E : struct;
+        Query<T, E, K> Query<T, E, K>() where T : struct where E : struct where K : struct;
+        EventWriter<TEvent> GetEventWriter<TEvent>() where TEvent : struct;
+        EventReader<TEvent> ReadEvents<TEvent>() where TEvent : struct;
+    }
+
+    public class ECS : IEngine
+    {
+        public ulong GlobalTick { get; private set; } = 0;
         readonly int MaxEntityCount;
         EntityManager entityManager;
         ISparseSet[] components;
@@ -28,11 +37,11 @@ namespace TECS
 
         Dictionary<Type, IResource> resources;
 
-        Dictionary<Type, IEventWriter> cachedReasers;
+        Dictionary<Type, IEventWriter> cachedWriters;
         Dictionary<(Type systemType,Type eventType), IEventReader> cachedReaders;
         EventManager eventManager = new();
 
-        private Type activeSystem;
+        [ThreadStatic]private static Type activeSystem;
         
 
         bool stop = false;
@@ -46,12 +55,17 @@ namespace TECS
             entityMasks = new Bitset[maxEntityCount];
             resources = new();
             MaxEntityCount = maxEntityCount;
+            cachedWriters = new Dictionary<Type, IEventWriter>();
+            cachedReaders = new Dictionary<(Type systemType, Type eventType), IEventReader>();
 
         }
 
         public ECS() : this(1_000) { }
 
-
+        public void NextTick()
+        {
+            GlobalTick++;
+        }
         public void SetActiveSystem(Type system) => activeSystem = system;
         public Entity CreateEntity()
         {
@@ -85,7 +99,7 @@ namespace TECS
             int typeId = ComponentID<T>.Value;
             SparseSet<T> set = GetOrCreateSet<T>();
 
-            set.Add(entityId, component);
+            set.Add(entityId, component, GlobalTick);
             entityMasks[entityId.Id].SetBit(typeId);
         }
 
@@ -115,9 +129,9 @@ namespace TECS
         where E:struct
         where K:struct
         {
-            var optT = GetOrCreateSet<T>().GetValue(entity);
-            var optE = GetOrCreateSet<E>().GetValue(entity);
-            var optK = GetOrCreateSet<K>().GetValue(entity);
+            var optT = GetOrCreateSet<T>().GetValue(entity, GlobalTick);
+            var optE = GetOrCreateSet<E>().GetValue(entity, GlobalTick);
+            var optK = GetOrCreateSet<K>().GetValue(entity, GlobalTick);
 
             if(optT.IsNone || optE.IsNone || optK.IsNone)
             {
@@ -164,20 +178,20 @@ namespace TECS
                 group = new SparseSet<Entity>(MaxEntityCount);
                 groups.Add(bitset, group);
             }
-            group.Add(entity, entity);
+            group.Add(entity, entity, GlobalTick);
         }
 
         public Query<T> Query<T>()
         where T : struct
         {
-            return new Query<T>(GetOrCreateSet<T>());
+            return new Query<T>(GetOrCreateSet<T>(),entityMasks, GlobalTick);
         }
 
         public Query<T, E> Query<T, E>()
         where T : struct
         where E : struct
         {
-            return new Query<T, E>(GetOrCreateSet<T>(), GetOrCreateSet<E>());
+            return new Query<T, E>(GetOrCreateSet<T>(), GetOrCreateSet<E>(), entityMasks, GlobalTick);
         }
 
         public Query<T, E, K> Query<T, E, K>()
@@ -201,16 +215,20 @@ namespace TECS
 
         public EventWriter<TEvent> GetEventWriter<TEvent>() where TEvent:struct
         {
-            EventWriter<TEvent> writer = new (eventManager);
-            return writer;
+            if(!cachedWriters.TryGetValue(typeof(TEvent), out var writer))
+            {
+                writer = new EventWriter<TEvent>(eventManager);
+                cachedWriters.Add(typeof(TEvent), writer);
+            }
+            return (EventWriter<TEvent>)writer;
         }
 
         public EventReader<TEvent> ReadEvents<TEvent>() where TEvent: struct
         {
-            if (!cachedReaders.TryGetValue((activeSystem.GetType(), typeof(TEvent)), out var reader))
+            if (!cachedReaders.TryGetValue((activeSystem, typeof(TEvent)), out var reader))
             {
                 reader = new EventReader<TEvent>(eventManager);
-                cachedReaders.Add((activeSystem.GetType(), typeof(TEvent)), reader);
+                cachedReaders.Add((activeSystem, typeof(TEvent)), reader);
             }
              
             return (EventReader<TEvent>)reader;

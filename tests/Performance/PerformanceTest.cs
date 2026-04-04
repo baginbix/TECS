@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
+using Microsoft.Diagnostics.Tracing.Parsers.MicrosoftAntimalwareEngine;
 using TECS;
 using TECS.Commands;
 
@@ -15,8 +16,20 @@ public class EcsBenchmarks
     public struct Position { public float X; public float Y; }
     public struct Velocity { public float Dx; public float Dy; }
 
+    public record struct Component3 (float Value1,float Value2, float Value3);
 
-    public struct MoveSystem : IQueryAction<Position, Velocity>
+
+    public struct MoveSystemThreeComponents : IQueryAction<Position, Velocity, Component3>
+    {
+        public void Execute(ref Position p, ref Velocity v, ref Component3 c)
+        {
+            p.X += v.Dx * c.Value1;
+            p.Y += v.Dy * c.Value2;
+            p.X += v.Dx * c.Value3;
+        }
+    }
+
+    public struct MoveSystemTwoComponents : IQueryAction<Position, Velocity>
     {
         public void Execute(ref Position p, ref Velocity v)
         {
@@ -52,16 +65,22 @@ public class EcsBenchmarks
 
         for (int i = 0; i < EntityCount; i++)
         {
-            var e = cmd.SpawnEntity();
-            cmd.InsertComponent(new Position { X = 0, Y = 0 }, e);
-            cmd.InsertComponent(new Velocity { Dx = 1f, Dy = 1f }, e);
+            var e = cmd.SpawnEntity()
+            .With(new Position { X = 0, Y = 0 })
+            .With(new Velocity { Dx = 1f, Dy = 1f });
+
+            Random rand = new Random();
+            if(rand.NextDouble() < 2)
+            {
+                cmd.InsertComponent(new Component3 { Value1 = 1f, Value2 = 1f, Value3 = 1f }, e);
+            }
         }
         
         cmd.Flush(ecs);
     }
 
     [Benchmark]
-    public void IterateQueryLambda()
+    public void IterateQueryLambdaTwoComponents()
     {
         var moveQuery = ecs.Query<Position, Velocity>();
         moveQuery.ForEach((ref Position p, ref Velocity v) =>
@@ -82,6 +101,29 @@ public class EcsBenchmarks
         });
     }
 
+        [Benchmark]
+    public void IterateQueryLambdaTwoComponentsWithStruct()
+    {
+        var moveQuery = ecs.Query<Position, Velocity>();
+        moveQuery.ForEach((ref Position p, ref Velocity v) =>
+        {
+            p.X += v.Dx;
+            p.Y += v.Dy;
+        });
+    }
+
+    [Benchmark]
+    public void IterateQueryLambdaThreeComponentsWithStruct()
+    {
+        var moveQuery = ecs.Query<Position, Velocity, Component3>();
+        moveQuery.ForEach((ref Position p, ref Velocity v, ref Component3 c) =>
+        {
+            p.X += v.Dx * c.Value1;
+            p.Y += v.Dy * c.Value2;
+            p.X += v.Dx * c.Value3;
+        });
+    }
+
     [Benchmark]
     public void IterateIActionOneComponent()
     {
@@ -90,10 +132,52 @@ public class EcsBenchmarks
     }
 
     [Benchmark]
+    public void IterateIActionThreeComponents()
+    {
+        var moveQuery = ecs.Query<Position, Velocity, Component3>();
+        var action = new MoveSystemThreeComponents();
+        moveQuery.ForEach(ref action);
+    }
+
+
+    [Benchmark]
+    public void InteraterEnumeratorOneComponent()
+    {
+        var moveQuery = ecs.Query<Position>();  
+        foreach(var pos in moveQuery)
+        {
+            pos.WriteComponent.X += 1;
+            pos.WriteComponent.Y += 1;
+        }
+    }
+    [Benchmark]
+    public void InteraterEnumeratorTwoComponents()
+    {
+        var moveQuery = ecs.Query<Position, Velocity>();  
+        foreach(var item in moveQuery)
+        {
+            item.component1.X += item.component2.Dx;
+            item.component1.Y += item.component2.Dy;
+        }
+    }
+
+     [Benchmark]
+    public void InteraterEnumeratorThreeComponents()
+    {
+        var moveQuery = ecs.Query<Position, Velocity, Component3>();  
+        foreach(var item in moveQuery)
+        {
+            item.component1.X += item.component2.Dx * item.component3.Value1;
+            item.component1.Y += item.component2.Dy * item.component3.Value2;
+            item.component1.X += item.component2.Dx * item.component3.Value3;
+        }
+    }
+
+    [Benchmark]
     public void IterateQueryQueryAction()
     {
         var moveQuery = ecs.Query<Position, Velocity>();
-        var action = new MoveSystem();
+        var action = new MoveSystemTwoComponents();
         moveQuery.ForEach(ref action);
     }
 

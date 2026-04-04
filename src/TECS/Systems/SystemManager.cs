@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using TECS;
 using TECS.Commands;
@@ -19,10 +20,16 @@ namespace TECS.Systems
         Render,          // Drawing to the screen
         Count            // Magic trick: Gives us the exact size needed for the array
     }
+
+    struct SystemItem
+    {
+        public ISystem System;
+        public ulong LastRunTick;
+    }
     internal class SystemManager
     {
         private readonly ECS ecs;
-        private readonly List<ISystem>[] systemGroups;
+        private readonly List<SystemItem>[] systemGroups;
         
         private List<IStateManager> stateManagers ; 
 
@@ -31,10 +38,10 @@ namespace TECS.Systems
         public SystemManager(ECS ecs)
         {
             this.ecs = ecs;
-            systemGroups = new List<ISystem>[(int)SystemPhase.Count];
+            systemGroups = new List<SystemItem>[(int)SystemPhase.Count];
             for (int i = 0; i < systemGroups.Length; i++)
             {
-                systemGroups[i] = new List<ISystem>();
+                systemGroups[i] = new List<SystemItem>();
             }
             commandBuffer = new();
             stateManagers = new();
@@ -42,7 +49,7 @@ namespace TECS.Systems
 
         public void Add(SystemPhase phase, ISystem system)
         {
-            systemGroups[(int)phase].Add(system);
+            systemGroups[(int)phase].Add(new SystemItem { System = system, LastRunTick = 0 });
         }
 
         public void AddStateManager(IStateManager manager)
@@ -56,7 +63,7 @@ namespace TECS.Systems
             foreach (var system in startupPhaseGroup)
             {
                 ecs.SetActiveSystem(system.GetType());
-                system.Run(ecs, ref commandBuffer);
+                system.System.Run(ecs, commandBuffer);
             }
             
             commandBuffer.Flush(ecs);
@@ -79,13 +86,17 @@ namespace TECS.Systems
             int startPhase = (int)SystemPhase.InitializeFrame;
             for (int i = startPhase; i < systemGroups.Length; i++)
             {
-                var currentPhaseGroup = systemGroups[i];
-                foreach (var system in currentPhaseGroup)
+                List<SystemItem> currentPhaseGroup = systemGroups[i];
+                Span<SystemItem> span = CollectionsMarshal.AsSpan(currentPhaseGroup);
+                for (int j = 0; j < span.Length; j++)
                 {
-                    ecs.SetActiveSystem(system.GetType());
-                    system.Run(ecs, ref commandBuffer);
-                }
-                
+                    ref SystemItem systemItem = ref span[j];
+                    
+                    ecs.SetActiveSystem(systemItem.System.GetType());
+                    systemItem.System.Run(ecs, commandBuffer);
+                    
+                    systemItem.LastRunTick = ecs.GlobalTick; 
+                }            
             }
 
             foreach (var sm in stateManagers)

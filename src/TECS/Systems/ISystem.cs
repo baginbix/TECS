@@ -4,6 +4,6 @@ namespace TECS
 {
     public interface ISystem 
     {
-        void Run(ECS ecs, ref CommandBuffer cmd);
+        void Run(IEngine engine, CommandBuffer cmd);
     }
 }
