@@ -42,6 +42,7 @@ namespace TECS
         EventManager eventManager = new();
 
         [ThreadStatic]private static Type activeSystem;
+        [ThreadStatic]private static ulong currentSystemLastTick = 0;
         
 
         bool stop = false;
@@ -67,6 +68,7 @@ namespace TECS
             GlobalTick++;
         }
         public void SetActiveSystem(Type system) => activeSystem = system;
+        public void SetLastSystemTick(ulong tick) => currentSystemLastTick = tick;
         public Entity CreateEntity()
         {
             Entity entity = entityManager.GetId();
@@ -184,14 +186,14 @@ namespace TECS
         public Query<T> Query<T>()
         where T : struct
         {
-            return new Query<T>(GetOrCreateSet<T>(),entityMasks, GlobalTick);
+            return new Query<T>(GetOrCreateSet<T>(),entityMasks, currentSystemLastTick, GlobalTick);
         }
 
         public Query<T, E> Query<T, E>()
         where T : struct
         where E : struct
         {
-            return new Query<T, E>(GetOrCreateSet<T>(), GetOrCreateSet<E>(), entityMasks, GlobalTick);
+            return new Query<T, E>(GetOrCreateSet<T>(), GetOrCreateSet<E>(), entityMasks,currentSystemLastTick, GlobalTick);
         }
 
         public Query<T, E, K> Query<T, E, K>()
@@ -199,7 +201,7 @@ namespace TECS
         where E : struct
         where K : struct
         {
-            return new Query<T, E, K>(GetOrCreateSet<T>(), GetOrCreateSet<E>(), GetOrCreateSet<K>(), entityMasks);
+            return new Query<T, E, K>(GetOrCreateSet<T>(), GetOrCreateSet<E>(), GetOrCreateSet<K>(), entityMasks, currentSystemLastTick, GlobalTick);
         }
 
         public List<T> GetComponentList<T>() where T : struct

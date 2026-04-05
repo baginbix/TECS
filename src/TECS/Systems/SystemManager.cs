@@ -93,6 +93,7 @@ namespace TECS.Systems
                     ref SystemItem systemItem = ref span[j];
                     
                     ecs.SetActiveSystem(systemItem.System.GetType());
+                    ecs.SetLastSystemTick(systemItem.LastRunTick);
                     systemItem.System.Run(ecs, commandBuffer);
                     
                     systemItem.LastRunTick = ecs.GlobalTick; 

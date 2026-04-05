@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Formats.Tar;
 using System.Linq;
 using System.Reflection.Metadata;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -43,9 +45,9 @@ public ref struct ComponentItem<T> where T: struct
         this.globalTick = globalTick;
     }
 
-    public ref readonly T ReadComponent => ref component;
+    public ref readonly T RO => ref component;
 
-    public ref T WriteComponent
+    public ref T RW
     {
         get
         {
@@ -61,16 +63,18 @@ public ref struct Query<T> where T : struct
     readonly Span<Entity> entities;
     readonly Span<Bitset> entityMasks;
     readonly QueryFilter queryFilter;
-    readonly ulong currentTick;
+    readonly ulong lastSystemTick;
+    readonly ulong lastGlobalTick;
     SparseSet<T> sparseSet;
     bool changed = false;
-    public Query(SparseSet<T> sparseSet, Span<Bitset> entityMasks, ulong currentTick)
+    public Query(SparseSet<T> sparseSet, Span<Bitset> entityMasks, ulong lastSystemTick, ulong lastGlobalTick)
     {
         this.dense = CollectionsMarshal.AsSpan(sparseSet.GetDense());
         entities = CollectionsMarshal.AsSpan(sparseSet.GetEntities());
         this.entityMasks = entityMasks;
         queryFilter = new QueryFilter();
-        this.currentTick = currentTick;
+        this.lastSystemTick = lastSystemTick;
+        this.lastGlobalTick = lastGlobalTick;
         this.sparseSet = sparseSet;
     }
 
@@ -125,7 +129,7 @@ public ref struct Query<T> where T : struct
         }
     }
 
-    public QueryEnumerator GetEnumerator() => new QueryEnumerator(sparseSet, entityMasks, queryFilter, currentTick,changed);
+    public QueryEnumerator GetEnumerator() => new QueryEnumerator(sparseSet, entityMasks, queryFilter, lastSystemTick, lastGlobalTick, changed);
     
 
     public ref struct QueryEnumerator
@@ -138,10 +142,11 @@ public ref struct Query<T> where T : struct
         private readonly QueryFilter queryFilter;
         private readonly SparseSet<T> sparseSet;
         private readonly Span<ulong> ticks;
-        private readonly ulong currentTick;
+        private readonly ulong lastGlobalTick;
+        private readonly ulong lastSystemTick;
         private readonly bool changed;
 
-        public QueryEnumerator(SparseSet<T> sparseSet, Span<Bitset> entityMasks, QueryFilter queryFilter, ulong currentTick, bool changed)
+        public QueryEnumerator(SparseSet<T> sparseSet, Span<Bitset> entityMasks, QueryFilter queryFilter, ulong lastSystemTick, ulong lastGlobalTick, bool changed)
         {
             this.dense = CollectionsMarshal.AsSpan(sparseSet.GetDense());
             this.entities = CollectionsMarshal.AsSpan(sparseSet.GetEntities());
@@ -150,7 +155,8 @@ public ref struct Query<T> where T : struct
             index = -1;
 
             this.sparseSet = sparseSet;
-            this.currentTick = currentTick;
+            this.lastSystemTick = lastSystemTick;
+            this.lastGlobalTick = lastGlobalTick;
 
             this.changed = changed;
 
@@ -167,7 +173,7 @@ public ref struct Query<T> where T : struct
                 
                 // If the component has been changed and the query is filtered to only include changed components, 
                 // skip if the component hasn't been changed since the last time it was read
-                if(changed && ticks[index] <= currentTick) continue;
+                if(changed && ticks[index] <= lastSystemTick) continue;
                 return true;
             }
 
@@ -177,9 +183,7 @@ public ref struct Query<T> where T : struct
         public ComponentItem<T> Current{
             get{
                 Span<ulong> ticks = sparseSet.GetLastTicks();
-                ticks[index] = currentTick;
-                //return ref dense[index];
-                return new ComponentItem<T>(ref dense[index], ref ticks[index], currentTick);
+                return new ComponentItem<T>(ref dense[index], ref ticks[index], lastGlobalTick);
             }
         }
     }
@@ -212,25 +216,48 @@ where  E: struct
             this.globalTick = globalTick;
         }
 
-        public ref readonly T ReadComponent1 => ref component1;
-        public ref readonly E ReadComponent2 => ref component2;
-
-        public ref T WriteComponent1
+        public void Deconstruct(out ComponentItem<T> comp1, out ComponentItem<E> comp2)
         {
-            get
-            {
-                tick1 = globalTick;
-                return ref component1;
-            }
+            comp1 = new ComponentItem<T>(ref component1, ref tick1, globalTick);
+            comp2 = new ComponentItem<E>(ref component2, ref tick2, globalTick);
         }
 
-        public ref E WriteComponent2
+        public ref readonly TRead RO<TRead>() where TRead : struct
         {
-            get
+            if(typeof(TRead) == typeof(T))
+            {
+                return ref Unsafe.As<T, TRead>(ref component1);
+            }
+            else if(typeof(TRead) == typeof(E))
+            {
+                return ref Unsafe.As<E, TRead>(ref component2);
+            }
+            #if DEBUG
+            else
+            {
+                throw new InvalidOperationException($"Type {typeof(TRead)} is not part of the query");
+            }
+            #endif
+        }
+
+        public ref TWrite RW<TWrite>() where TWrite : struct
+        {
+            if(typeof(TWrite) == typeof(T))
+            {
+                tick1 = globalTick;
+                return ref Unsafe.As<T, TWrite>(ref component1);
+            }
+            else if(typeof(TWrite) == typeof(E))
             {
                 tick2 = globalTick;
-                return ref component2;
+                return ref Unsafe.As<E, TWrite>(ref component2);
             }
+            #if DEBUG
+            else
+            {
+                throw new InvalidOperationException($"Type {typeof(TWrite)} is not part of the query");
+            }
+            #endif
         }
     }
     SparseSet<E> sparseE;
@@ -239,18 +266,21 @@ where  E: struct
     private readonly Span<Bitset> entityMasks;
 
     private readonly QueryFilter queryFilter;
-    private readonly ulong lastGlobalTick;
+    private readonly ulong lastGlobalTick;  
+    private readonly ulong lastSystemTick;
+
     private bool changedT = false;
     private bool changedE = false;
 
 
     
-    public Query(SparseSet<T> s1, SparseSet<E> s2, Span<Bitset> entityMasks, ulong lastGlobalTick)
+    public Query(SparseSet<T> s1, SparseSet<E> s2, Span<Bitset> entityMasks, ulong lastSystemTick, ulong lastGlobalTick)
     {
         sparseE = s2;
         sparseT = s1;
         this.entityMasks = entityMasks;
         this.lastGlobalTick = lastGlobalTick;
+        this.lastSystemTick = lastSystemTick;
         queryFilter = new QueryFilter();
     }
 
@@ -327,7 +357,7 @@ where  E: struct
         }
     }
 
-        public void ForEach(QueryFuncEntity<T,E> func)
+    public void ForEach(QueryFuncEntity<T,E> func)
     {
         SparseSet<T> s1 = sparseT;
         SparseSet<E> s2 = sparseE;
@@ -407,7 +437,7 @@ where  E: struct
         }
     }
 
-    public QueryEnumerator GetEnumerator() => new QueryEnumerator(sparseE, sparseT, entityMasks, queryFilter, lastGlobalTick, changedT, changedE);
+    public QueryEnumerator GetEnumerator() => new QueryEnumerator(sparseE, sparseT, entityMasks, queryFilter, lastSystemTick, lastGlobalTick, changedT, changedE);
 
 
     public ref struct QueryEnumerator
@@ -426,13 +456,14 @@ where  E: struct
         private int index;
         private int cachedIndex;
 
-        private readonly ulong lastGlobalTick;        
+        private readonly ulong lastGlobalTick;   
+        private readonly ulong lastSystemTick;     
         private readonly Span<ulong> ticksT;
         private readonly Span<ulong> ticksE;
         bool changedT = false;
         bool changedE = false;
 
-        public QueryEnumerator(SparseSet<E> sparseE, SparseSet<T> sparseT, Span<Bitset> entitiesMask, QueryFilter queryFilter, ulong globalTick, bool changedT, bool changedE)
+        public QueryEnumerator(SparseSet<E> sparseE, SparseSet<T> sparseT, Span<Bitset> entitiesMask, QueryFilter queryFilter, ulong systemTick, ulong globalTick, bool changedT, bool changedE)
         {
             this.denseE = CollectionsMarshal.AsSpan(sparseE.GetDense());
             this.denseT = CollectionsMarshal.AsSpan(sparseT.GetDense());
@@ -460,6 +491,8 @@ where  E: struct
             index = -1;
 
             this.lastGlobalTick = globalTick;
+            this.lastSystemTick = systemTick;
+
             ticksT = sparseT.GetLastTicks();
             ticksE = sparseE.GetLastTicks();
 
@@ -532,6 +565,15 @@ where T: struct
 where  E: struct
 where K: struct
 {
+    [Flags]
+    public enum ChangedSet : byte
+    {
+        None = 0,
+        T = 1 << 0,
+        E = 1 << 1,
+        K = 1 << 2
+    }
+    
     SparseSet<E> sparseE;
     SparseSet<T> sparseT;
     SparseSet<K> sparseK;
@@ -539,14 +581,22 @@ where K: struct
     QueryFilter queryFilter;
 
     Span<Bitset> entitiesMask;
+
+    readonly ulong lastSystemTick;
+    readonly ulong lastGlobalTick;
+    private ChangedSet changedMask;
     
-    public Query(SparseSet<T> s1, SparseSet<E> s2, SparseSet<K> s3, Span<Bitset> entitiesMask)
+    public Query(SparseSet<T> s1, SparseSet<E> s2, SparseSet<K> s3, Span<Bitset> entitiesMask, ulong lastSystemTick, ulong lastGlobalTick)
     {
         sparseE = s2;
         sparseT = s1;
         sparseK = s3;
         queryFilter = new QueryFilter();
         this.entitiesMask = entitiesMask;
+        this.lastSystemTick = lastSystemTick;
+        this.lastGlobalTick = lastGlobalTick;
+
+        changedMask = ChangedSet.None;
     }
 
     public Query<T,E,K> With<Component>()
@@ -560,6 +610,22 @@ where K: struct
     where Component: struct
     {
         queryFilter.Without<Component>();
+        return this;
+    }
+
+    public Query<T,E,K> Changed<TComponent>()
+    where TComponent: struct
+    {
+        if (typeof(TComponent) == typeof(T)) changedMask |= ChangedSet.T;
+        if (typeof(TComponent) == typeof(E)) changedMask |= ChangedSet.E;
+        if (typeof(TComponent) == typeof(K)) changedMask |= ChangedSet.K;
+        #if DEBUG
+        else
+        {
+            throw new InvalidOperationException($"Type {typeof(TComponent)} is not part of the query");
+        }
+        #endif
+
         return this;
     }
 
@@ -758,19 +824,111 @@ where K: struct
         }
     }
 
-    public QueryEnumerator GetEnumerator() => new QueryEnumerator(sparseE, sparseT, sparseK, entitiesMask, queryFilter);
+    public QueryEnumerator GetEnumerator() => new QueryEnumerator(sparseE, sparseT, sparseK, entitiesMask, queryFilter, lastSystemTick, lastGlobalTick, changedMask);
 
     public readonly ref struct QueryItem
     {
+        public readonly ref ulong tick1;
+        public readonly ref ulong tick2;
+        public readonly ref ulong tick3;
+        public readonly ulong globalTick;
         public readonly ref T component1;
         public readonly ref E component2;
         public readonly ref K component3;
 
-        public QueryItem(ref T comp1, ref E comp2, ref K comp3)
+        public QueryItem(ref T comp1, ref E comp2, ref K comp3, ref ulong tick1, ref ulong tick2, ref ulong tick3, ulong globalTick)
         {
             component1 = ref comp1;
             component2 = ref comp2;
             component3 = ref comp3;
+            this.tick1 = ref tick1;
+            this.tick2 = ref tick2;
+            this.tick3 = ref tick3;
+            this.globalTick = globalTick;
+        }
+
+        public void Deconstruct(out ComponentItem<T> comp1, out ComponentItem<E> comp2, out ComponentItem<K> comp3)
+        {
+            comp1 = new ComponentItem<T>(ref component1, ref tick1, globalTick);
+            comp2 = new ComponentItem<E>(ref component2, ref tick2, globalTick);
+            comp3 = new ComponentItem<K>(ref component3, ref tick3, globalTick);
+        }
+
+        public ref readonly T ReadComponent1 => ref component1;
+        public ref readonly E ReadComponent2 => ref component2;
+        public ref readonly K ReadComponent3 => ref component3; 
+
+        public ref T WriteComponent1
+        {
+            get
+            {
+                tick1 = globalTick;
+                return ref component1;
+            }
+        }
+
+        public ref E WriteComponent2
+        {
+            get
+            {
+                tick2 = globalTick;
+                return ref component2;
+            }
+        }
+
+        public ref K WriteComponent3
+        {
+            get
+            {
+                tick3 = globalTick;
+                return ref component3;
+            }
+        }
+
+        public ref readonly TRead RO<TRead>() where TRead : struct
+        {
+            if(typeof(TRead) == typeof(T))
+            {
+                return ref Unsafe.As<T, TRead>(ref component1);
+            }
+            else if(typeof(TRead) == typeof(E))
+            {
+                return ref Unsafe.As<E, TRead>(ref component2);
+            }
+            else if(typeof(TRead) == typeof(K))
+            {
+                return ref Unsafe.As<K, TRead>(ref component3);
+            }
+            #if DEBUG
+            else
+            {
+                throw new InvalidOperationException($"Type {typeof(TRead)} is not part of the query");
+            }
+            #endif
+        }
+        public ref TWrite RW<TWrite>() where TWrite : struct
+        {
+            if(typeof(TWrite) == typeof(T))
+            {
+                tick1 = globalTick;
+                return ref Unsafe.As<T, TWrite>(ref component1);
+            }
+            else if(typeof(TWrite) == typeof(E))
+            {
+                tick2 = globalTick;
+                return ref Unsafe.As<E, TWrite>(ref component2);
+            }
+            else if(typeof(TWrite) == typeof(K))
+            {
+                tick3 = globalTick;
+                return ref Unsafe.As<K, TWrite>(ref component3);
+            }
+            #if DEBUG
+            else
+            {
+                throw new InvalidOperationException($"Type {typeof(TWrite)} is not part of the query");
+            }
+            #endif
         }
     }
 
@@ -796,7 +954,15 @@ where K: struct
         private readonly QueryFilter queryFilter;
         private readonly Span<Bitset> entitiesMask;
 
-        public QueryEnumerator(SparseSet<E> sparseE, SparseSet<T> sparseT, SparseSet<K> sparseK, Span<Bitset> entitiesMask, QueryFilter queryFilter)
+        private readonly ulong lastSystemTick;
+        private readonly ulong lastGlobalTick;
+        private readonly Span<ulong> ticksT;
+        private readonly Span<ulong> ticksE;
+        private readonly Span<ulong> ticksK;
+
+        ChangedSet changedMask;
+
+        public QueryEnumerator(SparseSet<E> sparseE, SparseSet<T> sparseT, SparseSet<K> sparseK, Span<Bitset> entitiesMask, QueryFilter queryFilter, ulong lastSystemTick, ulong lastGlobalTick, ChangedSet changedMask)
         {
             this.denseE = CollectionsMarshal.AsSpan(sparseE.GetDense());
             this.denseT = CollectionsMarshal.AsSpan(sparseT.GetDense());
@@ -806,8 +972,17 @@ where K: struct
             sparseEntitiesE = sparseE.GetSparseSet().AsSpan();
             sparseEntitiesK = sparseK.GetSparseSet().AsSpan();
 
+            this.ticksT = sparseT.GetLastTicks();
+            this.ticksE = sparseE.GetLastTicks();
+            this.ticksK = sparseK.GetLastTicks();
+
+            this.lastSystemTick = lastSystemTick;
+            this.lastGlobalTick = lastGlobalTick;
+
             this.entitiesMask = entitiesMask;
             this.queryFilter = queryFilter;
+
+            this.changedMask = changedMask;
 
             // Determine which set drives the loop
             if(sparseT.Size < sparseE.Size && sparseT.Size < sparseK.Size)
@@ -846,6 +1021,9 @@ where K: struct
 
         public bool MoveNext()
         {
+            bool checkChangedT = (changedMask & ChangedSet.T) != 0;
+            bool checkChangedE = (changedMask & ChangedSet.E) != 0;
+            bool checkChangedK = (changedMask & ChangedSet.K) != 0;
             if(smallestSet == SmallestSet.T)
             {
 
@@ -855,6 +1033,9 @@ where K: struct
                     Bitset entityMask = entitiesMask[entityId];
                     if((queryFilter.exludeMask & entityMask) != 0) continue;
                     if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
+                    if(checkChangedT && ticksT[index] <= lastSystemTick) continue;
+                    if(checkChangedE && ticksE[sparseEntitiesE[entityId]] <= lastSystemTick) continue;
+                    if(checkChangedK && ticksK[sparseEntitiesK[entityId]] <= lastSystemTick) continue;
                     if(entityId< sparseEntitiesE.Length && entityId < sparseEntitiesK.Length )
                     {
                         cachedIndex1 = sparseEntitiesE[entityId];
@@ -874,6 +1055,9 @@ where K: struct
                     Bitset entityMask = entitiesMask[entityId];
                     if((queryFilter.exludeMask & entityMask) != 0) continue;
                     if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
+                    if(checkChangedE && ticksE[index] <= lastSystemTick) continue;
+                    if(checkChangedT && ticksT[sparseEntitiesT[entityId]] <= lastSystemTick) continue;
+                    if(checkChangedK && ticksK[sparseEntitiesK[entityId]] <= lastSystemTick) continue;
                     if(entityId< sparseEntitiesT.Length && entityId < sparseEntitiesK.Length )
                     {
                         cachedIndex1 = sparseEntitiesT[entityId];
@@ -893,6 +1077,9 @@ where K: struct
                     Bitset entityMask = entitiesMask[entityId];
                     if((queryFilter.exludeMask & entityMask) != 0) continue;
                     if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
+                    if(checkChangedK && ticksK[index] <= lastSystemTick) continue;
+                    if(checkChangedT && ticksT[sparseEntitiesT[entityId]] <= lastSystemTick) continue;
+                    if(checkChangedE && ticksE[sparseEntitiesE[entityId]] <= lastSystemTick) continue;
                     if(entityId< sparseEntitiesT.Length && entityId < sparseEntitiesE.Length )
                     {
                         cachedIndex1 = sparseEntitiesT[entityId];
@@ -916,21 +1103,21 @@ where K: struct
                     ref T comp1 = ref denseT[index];
                     ref E comp2 = ref denseE[cachedIndex1];
                     ref K comp3 = ref denseK[cachedIndex2];
-                    return new QueryItem(ref comp1, ref comp2, ref comp3);
+                    return new QueryItem(ref comp1, ref comp2, ref comp3, ref ticksT[index], ref ticksE[cachedIndex1], ref ticksK[cachedIndex2], lastGlobalTick);
                 }
                 else if(smallestSet == SmallestSet.E)
                 {
                     ref T comp1 = ref denseT[cachedIndex1];
                     ref E comp2 = ref denseE[index];
                     ref K comp3 = ref denseK[cachedIndex2];
-                    return new QueryItem(ref comp1, ref comp2, ref comp3);
+                    return new QueryItem(ref comp1, ref comp2, ref comp3, ref ticksT[cachedIndex1], ref ticksE[index], ref ticksK[cachedIndex2], lastGlobalTick);
                 }
                 else
                 {
                     ref T comp1 = ref denseT[cachedIndex1];
                     ref E comp2 = ref denseE[cachedIndex2];
                     ref K comp3 = ref denseK[index];
-                    return new QueryItem(ref comp1, ref comp2, ref comp3);
+                    return new QueryItem(ref comp1, ref comp2, ref comp3, ref ticksT[cachedIndex1], ref ticksE[cachedIndex2], ref ticksK[index], lastGlobalTick);
                 }
             }
         }
