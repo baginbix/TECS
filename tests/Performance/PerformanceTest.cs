@@ -146,8 +146,8 @@ public class EcsBenchmarks
         var moveQuery = ecs.Query<Position>();  
         foreach(var pos in moveQuery)
         {
-            pos.WriteComponent.X += 1;
-            pos.WriteComponent.Y += 1;
+            pos.RW.X += 1;
+            pos.RW.Y += 1;
         }
     }
     [Benchmark]
@@ -156,8 +156,8 @@ public class EcsBenchmarks
         var moveQuery = ecs.Query<Position, Velocity>();  
         foreach(var item in moveQuery)
         {
-            item.component1.X += item.component2.Dx;
-            item.component1.Y += item.component2.Dy;
+            item.RW<Position>().X += item.RO<Velocity>().Dx;
+            item.RW<Position>().Y += item.RO<Velocity>().Dy;
         }
     }
 
@@ -167,9 +167,9 @@ public class EcsBenchmarks
         var moveQuery = ecs.Query<Position, Velocity, Component3>();  
         foreach(var item in moveQuery)
         {
-            item.component1.X += item.component2.Dx * item.component3.Value1;
-            item.component1.Y += item.component2.Dy * item.component3.Value2;
-            item.component1.X += item.component2.Dx * item.component3.Value3;
+            item.RW<Position>().X += item.RO<Velocity>().Dx * item.RO<Component3>().Value1;
+            item.RW<Position>().Y += item.RO<Velocity>().Dy * item.RO<Component3>().Value2;
+            item.RW<Position>().X += item.RO<Velocity>().Dx * item.RO<Component3>().Value3;
         }
     }
 

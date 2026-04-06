@@ -204,8 +204,8 @@ where  E: struct
         private readonly ref ulong tick1;
         private readonly ref ulong tick2;
         private readonly ulong globalTick;
-        public readonly ref T component1;
-        public readonly ref E component2;
+        private readonly ref T component1;
+        private readonly ref E component2;
 
         public QueryItem(ref T comp1, ref E comp2, ref ulong tick1, ref ulong tick2, ulong globalTick)
         {
@@ -232,12 +232,9 @@ where  E: struct
             {
                 return ref Unsafe.As<E, TRead>(ref component2);
             }
-            #if DEBUG
-            else
-            {
-                throw new InvalidOperationException($"Type {typeof(TRead)} is not part of the query");
-            }
-            #endif
+
+            throw new InvalidOperationException($"Type {typeof(TRead)} is not part of the query");
+
         }
 
         public ref TWrite RW<TWrite>() where TWrite : struct
@@ -252,12 +249,8 @@ where  E: struct
                 tick2 = globalTick;
                 return ref Unsafe.As<E, TWrite>(ref component2);
             }
-            #if DEBUG
-            else
-            {
-                throw new InvalidOperationException($"Type {typeof(TWrite)} is not part of the query");
-            }
-            #endif
+
+            throw new InvalidOperationException($"Type {typeof(TWrite)} is not part of the query");
         }
     }
     SparseSet<E> sparseE;
@@ -828,13 +821,13 @@ where K: struct
 
     public readonly ref struct QueryItem
     {
-        public readonly ref ulong tick1;
-        public readonly ref ulong tick2;
-        public readonly ref ulong tick3;
-        public readonly ulong globalTick;
-        public readonly ref T component1;
-        public readonly ref E component2;
-        public readonly ref K component3;
+        private readonly ref ulong tick1;
+        private readonly ref ulong tick2;
+        private readonly ref ulong tick3;
+        private readonly ulong globalTick;
+        private readonly ref T component1;
+        private readonly ref E component2;
+        private readonly ref K component3;
 
         public QueryItem(ref T comp1, ref E comp2, ref K comp3, ref ulong tick1, ref ulong tick2, ref ulong tick3, ulong globalTick)
         {
@@ -899,12 +892,9 @@ where K: struct
             {
                 return ref Unsafe.As<K, TRead>(ref component3);
             }
-            #if DEBUG
-            else
-            {
-                throw new InvalidOperationException($"Type {typeof(TRead)} is not part of the query");
-            }
-            #endif
+
+            throw new InvalidOperationException($"Type {typeof(TRead)} is not part of the query");
+
         }
         public ref TWrite RW<TWrite>() where TWrite : struct
         {
@@ -923,12 +913,9 @@ where K: struct
                 tick3 = globalTick;
                 return ref Unsafe.As<K, TWrite>(ref component3);
             }
-            #if DEBUG
-            else
-            {
-                throw new InvalidOperationException($"Type {typeof(TWrite)} is not part of the query");
-            }
-            #endif
+
+            throw new InvalidOperationException($"Type {typeof(TWrite)} is not part of the query");
+
         }
     }
 
