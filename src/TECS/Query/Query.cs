@@ -921,172 +921,186 @@ where K: struct
 
 
     public ref struct QueryEnumerator
+{
+    enum SmallestSet { T, E, K }
+    
+    // 1. Ditch the Spans! Store direct references. (8 bytes each instead of 16)
+    private ref E denseE_Ref;
+    private ref T denseT_Ref;
+    private ref K denseK_Ref;
+
+    // We only need the entities of the SMALLEST set to drive the loop!
+    private ref Entity denseEntities_Ref; 
+    private readonly int denseLength;
+
+    private ref int sparseEntitiesE_Ref;
+    private ref int sparseEntitiesT_Ref;
+    private ref int sparseEntitiesK_Ref;
+    
+    private readonly int maxEntT, maxEntE, maxEntK;
+
+    private ref Bitset entitiesMask_Ref;
+    private readonly QueryFilter queryFilter;
+
+    private readonly SmallestSet smallestSet;
+    private int index;
+    private int idxT, idxE, idxK;
+
+    private readonly ulong lastSystemTick;
+    private readonly ulong lastGlobalTick;
+    
+    private ref ulong ticksT_Ref;
+    private ref ulong ticksE_Ref;
+    private ref ulong ticksK_Ref;
+
+    private readonly bool checkChangedT;
+    private readonly bool checkChangedE;
+    private readonly bool checkChangedK;
+
+    public QueryEnumerator(SparseSet<E> sparseE, SparseSet<T> sparseT, SparseSet<K> sparseK, Span<Bitset> entitiesMask, QueryFilter queryFilter, ulong lastSystemTick, ulong lastGlobalTick, ChangedSet changedMask)
     {
-        enum SmallestSet { T, E, K }
-        private readonly Span<E> denseE;
-        private readonly Span<T> denseT;
-        private readonly Span<K> denseK;
-        private readonly Span<Entity> denseEntitiesT; 
-        private readonly Span<Entity> denseEntitiesE;
-        private readonly Span<Entity> denseEntitiesK;
-        private readonly Span<int> sparseEntitiesE;
-        private readonly Span<int> sparseEntitiesT;
-        private readonly Span<int> sparseEntitiesK;
+        // Extract raw memory references to completely bypass bounds checking later
+        denseE_Ref = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(sparseE.GetDense()));
+        denseT_Ref = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(sparseT.GetDense()));
+        denseK_Ref = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(sparseK.GetDense()));
 
-        private readonly SmallestSet smallestSet;
-        private int index;
-        private int idxT, idxE, idxK;
+        sparseEntitiesE_Ref = ref MemoryMarshal.GetReference(sparseE.GetSparseSet().AsSpan());
+        sparseEntitiesT_Ref = ref MemoryMarshal.GetReference(sparseT.GetSparseSet().AsSpan());
+        sparseEntitiesK_Ref = ref MemoryMarshal.GetReference(sparseK.GetSparseSet().AsSpan());
 
-        private readonly QueryFilter queryFilter;
-        private readonly Span<Bitset> entitiesMask;
+        maxEntT = sparseT.GetSparseSet().Length;
+        maxEntE = sparseE.GetSparseSet().Length;
+        maxEntK = sparseK.GetSparseSet().Length;
 
-        private readonly ulong lastSystemTick;
-        private readonly ulong lastGlobalTick;
-        private readonly Span<ulong> ticksT;
-        private readonly Span<ulong> ticksE;
-        private readonly Span<ulong> ticksK;
+        ticksT_Ref = ref MemoryMarshal.GetReference(sparseT.GetLastTicks());
+        ticksE_Ref = ref MemoryMarshal.GetReference(sparseE.GetLastTicks());
+        ticksK_Ref = ref MemoryMarshal.GetReference(sparseK.GetLastTicks());
 
-        ChangedSet changedMask;
+        entitiesMask_Ref = ref MemoryMarshal.GetReference(entitiesMask);
 
-        public QueryEnumerator(SparseSet<E> sparseE, SparseSet<T> sparseT, SparseSet<K> sparseK, Span<Bitset> entitiesMask, QueryFilter queryFilter, ulong lastSystemTick, ulong lastGlobalTick, ChangedSet changedMask)
+        this.lastSystemTick = lastSystemTick;
+        this.lastGlobalTick = lastGlobalTick;
+        this.queryFilter = queryFilter;
+        this.checkChangedE = changedMask.HasFlag(ChangedSet.E);
+        this.checkChangedT = changedMask.HasFlag(ChangedSet.T);
+        this.checkChangedK = changedMask.HasFlag(ChangedSet.K);
+        this.index = -1;
+
+        // Determine which set drives the loop and ONLY store its entities
+        if(sparseT.Size < sparseE.Size && sparseT.Size < sparseK.Size)
         {
-            this.denseE = CollectionsMarshal.AsSpan(sparseE.GetDense());
-            this.denseT = CollectionsMarshal.AsSpan(sparseT.GetDense());
-            this.denseK = CollectionsMarshal.AsSpan(sparseK.GetDense());
-
-            sparseEntitiesT = sparseT.GetSparseSet().AsSpan();
-            sparseEntitiesE = sparseE.GetSparseSet().AsSpan();
-            sparseEntitiesK = sparseK.GetSparseSet().AsSpan();
-
-            this.ticksT = sparseT.GetLastTicks();
-            this.ticksE = sparseE.GetLastTicks();
-            this.ticksK = sparseK.GetLastTicks();
-
-            this.lastSystemTick = lastSystemTick;
-            this.lastGlobalTick = lastGlobalTick;
-
-            this.entitiesMask = entitiesMask;
-            this.queryFilter = queryFilter;
-
-            this.changedMask = changedMask;
-
-            // Determine which set drives the loop
-            if(sparseT.Size < sparseE.Size && sparseT.Size < sparseK.Size)
-            {
-                smallestSet = SmallestSet.T;
-            }
-            else if(sparseE.Size < sparseK.Size)
-            {
-                smallestSet = SmallestSet.E;
-            }
-            else
-            {
-                smallestSet = SmallestSet.K;
-            }
-
-            if (smallestSet == SmallestSet.T)
-            {
-                denseEntitiesT = CollectionsMarshal.AsSpan(sparseT.GetEntities());
-                denseEntitiesE = default; // Unused
-                denseEntitiesK = default; // Unused
-            }
-            else if (smallestSet == SmallestSet.E)
-            {
-                denseEntitiesE = CollectionsMarshal.AsSpan(sparseE.GetEntities());
-                denseEntitiesT = default; // Unused
-                denseEntitiesK = default; // Unused
-            }
-            else 
-            {
-                denseEntitiesK = CollectionsMarshal.AsSpan(sparseK.GetEntities());
-                denseEntitiesT = default; // Unused
-                denseEntitiesE = default; // Unused
-            }
-            index = -1;
+            smallestSet = SmallestSet.T;
+            denseEntities_Ref = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(sparseT.GetEntities()));
+            denseLength = sparseT.Size;
         }
-
-        public bool MoveNext()
+        else if(sparseE.Size < sparseK.Size)
         {
-            bool checkChangedT = (changedMask & ChangedSet.T) != 0;
-            bool checkChangedE = (changedMask & ChangedSet.E) != 0;
-            bool checkChangedK = (changedMask & ChangedSet.K) != 0;
-            if(smallestSet == SmallestSet.T)
-            {
-
-                while(++index < denseT.Length)
-                {
-                    int entityId = denseEntitiesT[index].Id;
-                    Bitset entityMask = entitiesMask[entityId];
-                    if((queryFilter.exludeMask & entityMask) != 0) continue;
-                    if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
-                    if(entityId >= sparseEntitiesE.Length || entityId >= sparseEntitiesK.Length) continue;
-                    idxE = sparseEntitiesE[entityId];
-                    idxK = sparseEntitiesK[entityId];
-                    if(idxE == -1 || idxK == -1) continue;  
-                    if(checkChangedT && ticksT[index] <= lastSystemTick) continue;
-                    if(checkChangedE && ticksE[idxE] <= lastSystemTick) continue;
-                    if(checkChangedK && ticksK[idxK] <= lastSystemTick) continue;
-
-                    idxT = index;
-                    return true;
-                    
-                }
-            }
-            else if(smallestSet ==  SmallestSet.E)
-            {
-                while(++index < denseE.Length)
-                {
-                    int entityId = denseEntitiesE[index].Id;
-                    Bitset entityMask = entitiesMask[entityId];
-                    if((queryFilter.exludeMask & entityMask) != 0) continue;
-                    if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
-                    if(entityId>= sparseEntitiesT.Length || entityId >= sparseEntitiesK.Length ) continue;
-                    idxT = sparseEntitiesT[entityId];
-                    idxK = sparseEntitiesK[entityId];
-                    if(idxT == -1 || idxK == -1) continue;  
-                    if(checkChangedE && ticksE[index] <= lastSystemTick) continue;
-                    if(checkChangedT && ticksT[idxT] <= lastSystemTick) continue;
-                    if(checkChangedK && ticksK[idxK] <= lastSystemTick) continue;
-
-                    idxE = index;
-                                               
-                    return true;
-                    
-                    
-                }
-            }
-            else
-            {
-                while(++index < denseK.Length)
-                {
-                    int entityId = denseEntitiesK[index].Id;
-                    Bitset entityMask = entitiesMask[entityId];
-                    if((queryFilter.exludeMask & entityMask) != 0) continue;
-                    if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
-                    if(entityId>= sparseEntitiesT.Length || entityId >= sparseEntitiesE.Length ) continue;
-                    idxT = sparseEntitiesT[entityId];
-                    idxE = sparseEntitiesE[entityId];
-                    if(idxT == -1 || idxE == -1) continue;  
-                    if(checkChangedK && ticksK[index] <= lastSystemTick) continue;
-                    if(checkChangedT && ticksT[idxT] <= lastSystemTick) continue;
-                    if(checkChangedE && ticksE[idxE] <= lastSystemTick) continue;
-
-                    idxK = index;
-                                          
-                    return true;
-                    
-                }
-            }
-            return false;
+            smallestSet = SmallestSet.E;
+            denseEntities_Ref = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(sparseE.GetEntities()));
+            denseLength = sparseE.Size;
         }
-
-        public QueryItem Current
+        else
         {
-            get
-            {
-                return new QueryItem(ref denseT[idxT], ref denseE[idxE], ref denseK[idxK], ref ticksT[idxT], ref ticksE[idxE], ref ticksK[idxK], lastGlobalTick);
-            }
+            smallestSet = SmallestSet.K;
+            denseEntities_Ref = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(sparseK.GetEntities()));
+            denseLength = sparseK.Size;
         }
     }
+
+    public bool MoveNext()
+    {
+
+        if(smallestSet == SmallestSet.T)
+        {
+            while(++index < denseLength)
+            {
+                // Unsafe.Add completely bypasses bounds checking
+                int entityId = Unsafe.Add(ref denseEntities_Ref, index).Id;
+                
+                // One manual bounds check is faster than 4 span bounds checks
+                if(entityId >= maxEntE || entityId >= maxEntK) continue;
+
+                Bitset entityMask = Unsafe.Add(ref entitiesMask_Ref, entityId);
+                if((queryFilter.exludeMask & entityMask) != 0) continue;
+                if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
+                
+                idxE = Unsafe.Add(ref sparseEntitiesE_Ref, entityId);
+                idxK = Unsafe.Add(ref sparseEntitiesK_Ref, entityId);
+                if(idxE == -1 || idxK == -1) continue;  
+
+                if(checkChangedT && Unsafe.Add(ref ticksT_Ref, index) <= lastSystemTick) continue;
+                if(checkChangedE && Unsafe.Add(ref ticksE_Ref, idxE) <= lastSystemTick) continue;
+                if(checkChangedK && Unsafe.Add(ref ticksK_Ref, idxK) <= lastSystemTick) continue;
+
+                idxT = index;
+                return true;
+            }
+        }
+        else if(smallestSet == SmallestSet.E)
+        {
+            while(++index < denseLength)
+            {
+                int entityId = Unsafe.Add(ref denseEntities_Ref, index).Id;
+                if(entityId >= maxEntT || entityId >= maxEntK) continue;
+                
+                Bitset entityMask = Unsafe.Add(ref entitiesMask_Ref, entityId);
+                if((queryFilter.exludeMask & entityMask) != 0) continue;
+                if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
+                
+                idxT = Unsafe.Add(ref sparseEntitiesT_Ref, entityId);
+                idxK = Unsafe.Add(ref sparseEntitiesK_Ref, entityId);
+                if(idxT == -1 || idxK == -1) continue;  
+
+                if(checkChangedE && Unsafe.Add(ref ticksE_Ref, index) <= lastSystemTick) continue;
+                if(checkChangedT && Unsafe.Add(ref ticksT_Ref, idxT) <= lastSystemTick) continue;
+                if(checkChangedK && Unsafe.Add(ref ticksK_Ref, idxK) <= lastSystemTick) continue;
+
+                idxE = index;                   
+                return true;
+            }
+        }
+        else // Smallest is K
+        {
+            while(++index < denseLength)
+            {
+                int entityId = Unsafe.Add(ref denseEntities_Ref, index).Id;
+                if(entityId >= maxEntT || entityId >= maxEntE) continue;
+                
+                Bitset entityMask = Unsafe.Add(ref entitiesMask_Ref, entityId);
+                if((queryFilter.exludeMask & entityMask) != 0) continue;
+                if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
+
+                idxT = Unsafe.Add(ref sparseEntitiesT_Ref, entityId);
+                idxE = Unsafe.Add(ref sparseEntitiesE_Ref, entityId);
+                if(idxT == -1 || idxE == -1) continue;  
+
+                if(checkChangedK && Unsafe.Add(ref ticksK_Ref, index) <= lastSystemTick) continue;
+                if(checkChangedT && Unsafe.Add(ref ticksT_Ref, idxT) <= lastSystemTick) continue;
+                if(checkChangedE && Unsafe.Add(ref ticksE_Ref, idxE) <= lastSystemTick) continue;
+
+                idxK = index;                      
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public QueryItem Current
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get
+        {
+            // Fetch directly from the references instantly
+            return new QueryItem(
+                ref Unsafe.Add(ref denseT_Ref, idxT), 
+                ref Unsafe.Add(ref denseE_Ref, idxE), 
+                ref Unsafe.Add(ref denseK_Ref, idxK), 
+                ref Unsafe.Add(ref ticksT_Ref, idxT), 
+                ref Unsafe.Add(ref ticksE_Ref, idxE), 
+                ref Unsafe.Add(ref ticksK_Ref, idxK), 
+                lastGlobalTick);
+        }
+    }
+}
 
 }
