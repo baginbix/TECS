@@ -935,8 +935,7 @@ where K: struct
 
         private readonly SmallestSet smallestSet;
         private int index;
-        private int cachedIndex1;
-        private int cachedIndex2;
+        private int idxT, idxE, idxK;
 
         private readonly QueryFilter queryFilter;
         private readonly Span<Bitset> entitiesMask;
@@ -1020,18 +1019,17 @@ where K: struct
                     Bitset entityMask = entitiesMask[entityId];
                     if((queryFilter.exludeMask & entityMask) != 0) continue;
                     if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
+                    if(entityId >= sparseEntitiesE.Length || entityId >= sparseEntitiesK.Length) continue;
+                    idxE = sparseEntitiesE[entityId];
+                    idxK = sparseEntitiesK[entityId];
+                    if(idxE == -1 || idxK == -1) continue;  
                     if(checkChangedT && ticksT[index] <= lastSystemTick) continue;
-                    if(checkChangedE && ticksE[sparseEntitiesE[entityId]] <= lastSystemTick) continue;
-                    if(checkChangedK && ticksK[sparseEntitiesK[entityId]] <= lastSystemTick) continue;
-                    if(entityId< sparseEntitiesE.Length && entityId < sparseEntitiesK.Length )
-                    {
-                        cachedIndex1 = sparseEntitiesE[entityId];
-                        cachedIndex2 = sparseEntitiesK[entityId];
-                        if(cachedIndex1 != -1 && cachedIndex2 != -1)
-                        {                            
-                            return true;
-                        }
-                    }
+                    if(checkChangedE && ticksE[idxE] <= lastSystemTick) continue;
+                    if(checkChangedK && ticksK[idxK] <= lastSystemTick) continue;
+
+                    idxT = index;
+                    return true;
+                    
                 }
             }
             else if(smallestSet ==  SmallestSet.E)
@@ -1042,18 +1040,19 @@ where K: struct
                     Bitset entityMask = entitiesMask[entityId];
                     if((queryFilter.exludeMask & entityMask) != 0) continue;
                     if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
+                    if(entityId>= sparseEntitiesT.Length || entityId >= sparseEntitiesK.Length ) continue;
+                    idxT = sparseEntitiesT[entityId];
+                    idxK = sparseEntitiesK[entityId];
+                    if(idxT == -1 || idxK == -1) continue;  
                     if(checkChangedE && ticksE[index] <= lastSystemTick) continue;
-                    if(checkChangedT && ticksT[sparseEntitiesT[entityId]] <= lastSystemTick) continue;
-                    if(checkChangedK && ticksK[sparseEntitiesK[entityId]] <= lastSystemTick) continue;
-                    if(entityId< sparseEntitiesT.Length && entityId < sparseEntitiesK.Length )
-                    {
-                        cachedIndex1 = sparseEntitiesT[entityId];
-                        cachedIndex2 = sparseEntitiesK[entityId];
-                        if(cachedIndex1 != -1 && cachedIndex2 != -1)
-                        {                            
-                            return true;
-                        }
-                    }
+                    if(checkChangedT && ticksT[idxT] <= lastSystemTick) continue;
+                    if(checkChangedK && ticksK[idxK] <= lastSystemTick) continue;
+
+                    idxE = index;
+                                               
+                    return true;
+                    
+                    
                 }
             }
             else
@@ -1064,18 +1063,18 @@ where K: struct
                     Bitset entityMask = entitiesMask[entityId];
                     if((queryFilter.exludeMask & entityMask) != 0) continue;
                     if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
+                    if(entityId>= sparseEntitiesT.Length || entityId >= sparseEntitiesE.Length ) continue;
+                    idxT = sparseEntitiesT[entityId];
+                    idxE = sparseEntitiesE[entityId];
+                    if(idxT == -1 || idxE == -1) continue;  
                     if(checkChangedK && ticksK[index] <= lastSystemTick) continue;
-                    if(checkChangedT && ticksT[sparseEntitiesT[entityId]] <= lastSystemTick) continue;
-                    if(checkChangedE && ticksE[sparseEntitiesE[entityId]] <= lastSystemTick) continue;
-                    if(entityId< sparseEntitiesT.Length && entityId < sparseEntitiesE.Length )
-                    {
-                        cachedIndex1 = sparseEntitiesT[entityId];
-                        cachedIndex2 = sparseEntitiesE[entityId];
-                        if(cachedIndex1 != -1 && cachedIndex2 != -1)
-                        {                            
-                            return true;
-                        }
-                    }
+                    if(checkChangedT && ticksT[idxT] <= lastSystemTick) continue;
+                    if(checkChangedE && ticksE[idxE] <= lastSystemTick) continue;
+
+                    idxK = index;
+                                          
+                    return true;
+                    
                 }
             }
             return false;
@@ -1085,27 +1084,7 @@ where K: struct
         {
             get
             {
-                if(smallestSet == SmallestSet.T)
-                {
-                    ref T comp1 = ref denseT[index];
-                    ref E comp2 = ref denseE[cachedIndex1];
-                    ref K comp3 = ref denseK[cachedIndex2];
-                    return new QueryItem(ref comp1, ref comp2, ref comp3, ref ticksT[index], ref ticksE[cachedIndex1], ref ticksK[cachedIndex2], lastGlobalTick);
-                }
-                else if(smallestSet == SmallestSet.E)
-                {
-                    ref T comp1 = ref denseT[cachedIndex1];
-                    ref E comp2 = ref denseE[index];
-                    ref K comp3 = ref denseK[cachedIndex2];
-                    return new QueryItem(ref comp1, ref comp2, ref comp3, ref ticksT[cachedIndex1], ref ticksE[index], ref ticksK[cachedIndex2], lastGlobalTick);
-                }
-                else
-                {
-                    ref T comp1 = ref denseT[cachedIndex1];
-                    ref E comp2 = ref denseE[cachedIndex2];
-                    ref K comp3 = ref denseK[index];
-                    return new QueryItem(ref comp1, ref comp2, ref comp3, ref ticksT[cachedIndex1], ref ticksE[cachedIndex2], ref ticksK[index], lastGlobalTick);
-                }
+                return new QueryItem(ref denseT[idxT], ref denseE[idxE], ref denseK[idxK], ref ticksT[idxT], ref ticksE[idxE], ref ticksK[idxK], lastGlobalTick);
             }
         }
     }
