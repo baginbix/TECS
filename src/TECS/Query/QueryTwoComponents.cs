@@ -143,12 +143,14 @@ where  E: struct
         var denseT = CollectionsMarshal.AsSpan(s1.GetDense());
         var denseE = CollectionsMarshal.AsSpan(s2.GetDense());
         if(sparseT.Size<sparseE.Size){
-            var entities = CollectionsMarshal.AsSpan(s1.GetEntities());
+            var entities = s1.GetEntities();
             var entitiesE = s2.GetSparseSet().AsSpan();
             for(int i = 0; i < denseT.Length; i++)
             {
                 int entityId = entities[i].Id;
-                int indexE = entitiesE[entityId];
+                int pageIndex = entityId >> SparseSet<T>.PAGE_SHIFT;
+                int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
+                int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
                 if((queryFilter.exludeMask & entityMask) != 0) continue;
                 if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
@@ -164,7 +166,9 @@ where  E: struct
             for(int i = 0; i < denseE.Length; i++)
             {
                 int entityId = entities[i].Id;
-                int indexE = entitiesE[entityId];
+                int pageIndex = entityId >> SparseSet<E>.PAGE_SHIFT;
+                int pageOffset = entityId & SparseSet<E>.PAGE_MASK;
+                int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
                 if((queryFilter.exludeMask & entityMask) != 0) continue;
                 if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
@@ -187,7 +191,9 @@ where  E: struct
             for(int i = 0; i < denseT.Length; i++)
             {
                 int entityId = entities[i].Id;
-                int indexE = entitiesE[entityId];
+                int pageIndex = entityId >> SparseSet<T>.PAGE_SHIFT;
+                int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
+                int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
                 if((queryFilter.exludeMask & entityMask) != 0) continue;
                 if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
@@ -203,7 +209,9 @@ where  E: struct
             for(int i = 0; i < denseE.Length; i++)
             {
                 int entityId = entities[i].Id;
-                int indexE = entitiesE[entityId];
+                int pageIndex = entityId >> SparseSet<E>.PAGE_SHIFT;
+                int pageOffset = entityId & SparseSet<E>.PAGE_MASK;
+                int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
                 if((queryFilter.exludeMask & entityMask) != 0) continue;
                 if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
@@ -227,7 +235,9 @@ where  E: struct
             for(int i = 0; i < denseT.Length; i++)
             {
                 int entityId = entities[i].Id;
-                int indexE = entitiesE[entityId];
+                int pageIndex = entityId >> SparseSet<T>.PAGE_SHIFT;
+                int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
+                int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
                 if((queryFilter.exludeMask & entityMask) != 0) continue;
                 if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
@@ -244,7 +254,9 @@ where  E: struct
             for(int i = 0; i < denseE.Length; i++)
             {
                 int entityId = entities[i].Id;
-                int indexE = entitiesE[entityId];
+                int pageIndex = entityId >> SparseSet<E>.PAGE_SHIFT;
+                int pageOffset = entityId & SparseSet<E>.PAGE_MASK;
+                int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
                 if((queryFilter.exludeMask & entityMask) != 0) continue;
                 if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
@@ -264,13 +276,14 @@ where  E: struct
         private ref T denseT;
         private ref Entity denseEntitites;
         private readonly int denseEntityLength;
-        private ref int sparseEntitiesE;
-        private ref int sparseEntitiesT;
+        private int[][] sparseEntitiesE;
+        private int[][] sparseEntitiesT;
 
         private readonly int maxEntT, maxEntE;
 
         private ref Bitset entitiesMask;
-        private readonly QueryFilter queryFilter;
+        private readonly Bitset includeMask;
+        private readonly Bitset exludeMask;
 
         private readonly bool tIsSmaller;
         private int index;
@@ -282,20 +295,23 @@ where  E: struct
         private ref ulong ticksE;
         bool changedT = false;
         bool changedE = false;
+        bool hasInclude = false;
+        bool hasExclude = false;
 
         public QueryEnumerator(SparseSet<E> sparseE, SparseSet<T> sparseT, Span<Bitset> entitiesMask, QueryFilter queryFilter, ulong systemTick, ulong globalTick, bool changedT, bool changedE)
         {
             this.denseE = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(sparseE.GetDense()));
             this.denseT = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(sparseT.GetDense()));
 
-            sparseEntitiesT = ref MemoryMarshal.GetReference(sparseT.GetSparseSet().AsSpan());
-            sparseEntitiesE = ref MemoryMarshal.GetReference(sparseE.GetSparseSet().AsSpan());
+            sparseEntitiesT = sparseT.GetSparseSet();
+            sparseEntitiesE = sparseE.GetSparseSet();
 
-            maxEntT = sparseT.GetSparseSet().Length;
-            maxEntE = sparseE.GetSparseSet().Length;
+            maxEntT = sparseEntitiesT.Length;
+            maxEntE = sparseEntitiesE.Length;
 
             this.entitiesMask = ref MemoryMarshal.GetReference(entitiesMask);
-            this.queryFilter = queryFilter;
+            this.includeMask = queryFilter.includeMask;
+            this.exludeMask = queryFilter.exludeMask;
 
             // Determine which set drives the loop
             tIsSmaller = sparseT.Size < sparseE.Size;
@@ -322,45 +338,118 @@ where  E: struct
             this.changedE = changedE;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            if(tIsSmaller)
+            // OPTIMIZATION 3: Loop Unswitching
+            if (changedT || changedE)
             {
-
-                while(++index < denseEntityLength)
+                // SLOW PATH: Tick checking enabled
+                if(tIsSmaller)
                 {
-                    int entityId = Unsafe.As<Entity,int>(ref Unsafe.Add(ref denseEntitites, index));
+                    while(++index < denseEntityLength)
+                    {
+                        // OPTIMIZATION 4: Safe ID fetch
+                        int entityId = Unsafe.Add(ref denseEntitites, index).Id;
 
-                    if(entityId >= maxEntE) continue; // Skip invalid entities
-                    Bitset entityMask = Unsafe.Add(ref entitiesMask, entityId);
-                    if((queryFilter.exludeMask & entityMask) != 0) continue;
-                    if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
-                    idxE = Unsafe.Add(ref sparseEntitiesE, entityId);
-                    if(idxE == -1) continue; // Entity doesn't have component E
-                    if(changedT && Unsafe.Add(ref ticksT, index) <= lastSystemTick) continue;
-                    if(changedE && Unsafe.Add(ref ticksE, idxE) <= lastSystemTick) continue;
+                        Bitset entityMask = Unsafe.Add(ref entitiesMask, entityId);
+                        if((exludeMask & entityMask) != 0) continue;
+                        if((includeMask & entityMask) != includeMask) continue;
+                        int pageIndex = entityId >> SparseSet<E>.PAGE_SHIFT;
+                        if(pageIndex >= maxEntE) continue;
 
-                    idxT = index;
-                    return true;
+                        int[] page = sparseEntitiesE[pageIndex];
+                        if(page == null) continue;
+
+                        int pageOffset = entityId & SparseSet<E>.PAGE_MASK;
+                        idxE = page[pageOffset];
+                        if(idxE < 0) continue; // Sign check trick
+                        
+                        if(changedT && Unsafe.Add(ref ticksT, index) <= lastSystemTick) continue;
+                        if(changedE && Unsafe.Add(ref ticksE, idxE) <= lastSystemTick) continue;
+
+                        idxT = index;
+                        return true;
+                    }
+                }
+                else
+                {
+                    while(++index < denseEntityLength)
+                    {
+                        int entityId = Unsafe.Add(ref denseEntitites, index).Id;
+
+                        Bitset entityMask = Unsafe.Add(ref entitiesMask, entityId);
+                        if((exludeMask & entityMask) != 0) continue;
+                        if((includeMask & entityMask) != includeMask) continue;
+                        
+                        int pageIndex = entityId >> SparseSet<T>.PAGE_SHIFT;
+                        if(pageIndex >= maxEntT) continue;
+                        
+                        int[] page = sparseEntitiesT[pageIndex];
+                        if(page == null) continue;
+                        
+                        int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
+                        idxT = page[pageOffset];
+                        if(idxT < 0) continue; 
+                        
+                        if(changedT && Unsafe.Add(ref ticksT, idxT) <= lastSystemTick) continue;
+                        if(changedE && Unsafe.Add(ref ticksE, index) <= lastSystemTick) continue;
+
+                        idxE = index;
+                        return true;
+                    }
                 }
             }
             else
             {
-                while(++index < denseEntityLength)
+                // FAST PATH: Zero tick checking overhead
+                if(tIsSmaller)
                 {
-                    int entityId = Unsafe.As<Entity,int>(ref Unsafe.Add(ref denseEntitites, index));
+                    while(++index < denseEntityLength)
+                    {
+                        int entityId = Unsafe.Add(ref denseEntitites, index).Id;
 
-                    if(entityId >= maxEntT) continue; // Skip invalid entities
-                    Bitset entityMask = Unsafe.Add(ref entitiesMask, entityId);
-                    if((queryFilter.exludeMask & entityMask) != 0) continue;
-                    if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
-                    idxT = Unsafe.Add(ref sparseEntitiesT, entityId);
-                    if(idxT == -1) continue; // Entity doesn't have component E
-                    if(changedT && Unsafe.Add(ref ticksT, idxT) <= lastSystemTick) continue;
-                    if(changedE && Unsafe.Add(ref ticksE, index) <= lastSystemTick) continue;
+                        Bitset entityMask = Unsafe.Add(ref entitiesMask, entityId);
+                        if((exludeMask & entityMask) != 0) continue;
+                        if((includeMask & entityMask) != includeMask) continue;
+                        
+                        int pageIndex = entityId >> SparseSet<E>.PAGE_SHIFT;
+                        if(pageIndex >= maxEntE) continue;
 
-                    idxE = index;
-                    return true;
+                        int[] page = sparseEntitiesE[pageIndex];
+                        if(page == null) continue;
+                        
+                        int pageOffset = entityId & SparseSet<E>.PAGE_MASK;
+                        idxE = page[pageOffset];
+                        if(idxE < 0) continue; 
+
+                        idxT = index;
+                        return true;
+                    }
+                }
+                else
+                {
+                    while(++index < denseEntityLength)
+                    {
+                        int entityId = Unsafe.Add(ref denseEntitites, index).Id;
+
+                        Bitset entityMask = Unsafe.Add(ref entitiesMask, entityId);
+                        if((exludeMask & entityMask) != 0) continue;
+                        if((includeMask & entityMask) != includeMask) continue;
+                        
+                        int pageIndex = entityId >> SparseSet<T>.PAGE_SHIFT;
+                        if(pageIndex >= maxEntT) continue;
+
+                        int[] page = sparseEntitiesT[pageIndex];
+                        if(page == null) continue;
+
+                        int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
+                        idxT = page[pageOffset];
+                        if(idxT < 0) continue; 
+
+                        idxE = index;
+                        return true;
+                    }
                 }
             }
             return false;

@@ -11,27 +11,41 @@ namespace TECS
         bool Contains(Entity entity);
         List<Entity> GetEntities();
 
-        int[] GetSparseSet();
+        int[][] GetSparseSet();
     }
     public class SparseSet<T> : ISparseSet
     {
+        // A page must be a power of 2 for the bitwise operations to work correctly.
+        public const int PAGE_SHIFT = 12;
+        private const int PAGE_SIZE = 1 << PAGE_SHIFT;
+        public const int PAGE_MASK = PAGE_SIZE - 1;
+
         List<T> dense;
         List<ulong> ticks;
         List<Entity> denseEntities = new List<Entity>();
-        int[] sparse;
+        int[][] sparse;
         private static readonly bool isTag = typeof(T).GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).Length == 0;
 
         public int Size => dense.Count;
         public SparseSet(int size){
             dense = !isTag ? new List<T>(size) : new List<T>(0);
-            sparse =  new int[size];
-            Array.Fill(sparse, -1);
+            
+            int numPages = (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+            sparse =  new int[size][];
             ticks = new List<ulong>(size);
         }
         public void Add(Entity entity, T data, ulong currentTick){
-            if(sparse[entity.Id] != -1){
+            int pageIndex = entity.Id >> PAGE_SHIFT;
+            int pageOffset = entity.Id & PAGE_MASK;
+
+            if (sparse[pageIndex] is null)
+            {
+                sparse[pageIndex] = new int[PAGE_SIZE];
+                Array.Fill(sparse[pageIndex], -1);
+            }
+            if(sparse[pageIndex][pageOffset] != -1){
                 if(!isTag)
-                    dense[sparse[entity.Id]] = data;
+                    dense[sparse[pageIndex][pageOffset]] = data;
                 ticks[entity.Id] = currentTick;
                 return;
             }
@@ -42,15 +56,18 @@ namespace TECS
                 ticks.Add(currentTick);
             }
             denseEntities.Add(entity);
-            sparse[entity.Id] = denseEntities.Count-1;
+            sparse[pageIndex][pageOffset] = denseEntities.Count-1;
         }
 
         public void Remove(Entity entity){
-            if(sparse[entity.Id] == -1){
+            int pageIndex = entity.Id >> PAGE_SHIFT;
+            int pageOffset = entity.Id & PAGE_MASK;
+
+            if(sparse[pageIndex][pageOffset] == -1){
                 return;
             }   
 
-            int denseId = sparse[entity.Id];
+            int denseId = sparse[pageIndex][pageOffset];
             int index = denseEntities.Count - 1;
             Entity lastEntity = denseEntities[index];
 
@@ -65,8 +82,10 @@ namespace TECS
             
             denseEntities.RemoveAt(denseEntities.Count - 1);
 
-            sparse[lastEntity.Id] = denseId;
-            sparse[entity.Id] = -1;
+            int pageIndexLast = lastEntity.Id >> PAGE_SHIFT;
+            int pageOffsetLast = lastEntity.Id & PAGE_MASK;
+            sparse[pageIndexLast][pageOffsetLast] = denseId;
+            sparse[pageIndex][pageOffset] = -1;
         }
         /*
         public ref T GetValue(Entity entity){
@@ -75,7 +94,9 @@ namespace TECS
         }
         */
         public OptionRef<T> GetValue(Entity entity, ulong currentTick){
-            int index = sparse[entity.Id];
+            int pageIndex = entity.Id >> PAGE_SHIFT;
+            int pageOffset = entity.Id & PAGE_MASK;
+            int index = sparse[pageIndex][pageOffset];
             if(index == -1)
                 return  OptionRef<T>.None;
             ticks[entity.Id] = currentTick;
@@ -88,7 +109,9 @@ namespace TECS
 
         public bool Contains(Entity entity)
         {
-            return entity.Id < sparse.Length && sparse[entity.Id] != -1;
+            int pageIndex = entity.Id >> PAGE_SHIFT;
+            int pageOffset = entity.Id & PAGE_MASK;
+            return entity.Id < sparse.Length && sparse[pageIndex][pageOffset] != -1;
         }
 
         public List<Entity> GetEntities()
@@ -98,6 +121,6 @@ namespace TECS
 
         public Span<ulong> GetLastTicks() => CollectionsMarshal.AsSpan(ticks);
 
-        public int[] GetSparseSet() => sparse;
+        public int[][] GetSparseSet() => sparse;
     }
 }
