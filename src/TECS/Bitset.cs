@@ -8,7 +8,6 @@ namespace TECS
 {
     public unsafe struct Bitset : IEquatable<Bitset>
     {
-        public ulong bits;
 
         /* Cache-line is 64 bytes so the array fits inside 2 chache-lines.
         *  This allows us to store up to 1024 bits while still being very fast to copy and compare.
@@ -17,17 +16,24 @@ namespace TECS
 
         public Bitset()
         {
-            bits = 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Bitset operator &(Bitset a, Bitset b)
+        public readonly bool  Intersects(in Bitset b)
         {
-            Bitset result = new();
             for(int i = 0; i < 16; i++){
-                result.parts[i] = a.parts[i] & b.parts[i];
+                if((parts[i] & b.parts[i]) != 0) return true;
             }
-            return result;
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly bool ContainsAll(in Bitset b)
+        {
+            for(int i = 0; i < 16; i++){
+                if((parts[i] & b.parts[i]) != b.parts[i]) return false;
+            }
+            return true;
         }
 
         public static bool operator ==(Bitset a, Bitset b)
@@ -39,8 +45,6 @@ namespace TECS
         }
 
         public static bool operator !=(Bitset a, Bitset b) => !(a == b);
-
-        public static implicit operator long(Bitset bitset) => (long)bitset.bits;
 
         public void SetBit(int position){
             int part = position >> 6; // Divide by 64 to find the part index
@@ -70,7 +74,7 @@ namespace TECS
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsEmpty()
+        public readonly bool IsEmpty()
         {
             for(int i = 0; i < 16; i++){
                 if(parts[i] != 0) return false;
@@ -84,11 +88,11 @@ namespace TECS
 
         public override int GetHashCode()
         {
-            int hash = bits.GetHashCode();
+            HashCode hash = new HashCode();
             for(int i = 0; i < 16; i++){
-                hash = HashCode.Combine(hash, parts[i].GetHashCode());
+                hash.Add(parts[i]);
             }
-            return hash;
+            return hash.ToHashCode();
         }
         
     }

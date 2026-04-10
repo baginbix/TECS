@@ -11,7 +11,12 @@ using TECS.Commands;
 // This attribute tells BDN to track every single byte allocated
 [MemoryDiagnoser] 
 [DisassemblyDiagnoser(printSource: true, maxDepth: 2)]// Views the generated assembly code for the benchmarked methods.
+[HardwareCounters(
+    BenchmarkDotNet.Diagnosers.HardwareCounter.CacheMisses, 
+    BenchmarkDotNet.Diagnosers.HardwareCounter.BranchMispredictions, 
+    BenchmarkDotNet.Diagnosers.HardwareCounter.BranchInstructions)]
 public class EcsBenchmarks
+
 {
     public struct Position { public float X; public float Y; }
     public struct Velocity { public float Dx; public float Dy; }
@@ -79,7 +84,7 @@ public class EcsBenchmarks
         cmd.Flush(ecs);
     }
 
-    [Benchmark]
+    //[Benchmark]
     public void IterateQueryLambdaTwoComponents()
     {
         var moveQuery = ecs.Query<Position, Velocity>();
@@ -90,7 +95,7 @@ public class EcsBenchmarks
         });
     }
 
-    [Benchmark]
+    //[Benchmark]
     public void IterateQueryLambdaOneComponent()
     {
         var moveQuery = ecs.Query<Position>();
@@ -101,7 +106,7 @@ public class EcsBenchmarks
         });
     }
 
-        [Benchmark]
+    //[Benchmark]
     public void IterateQueryLambdaTwoComponentsWithStruct()
     {
         var moveQuery = ecs.Query<Position, Velocity>();
@@ -112,7 +117,7 @@ public class EcsBenchmarks
         });
     }
 
-    [Benchmark]
+    //[Benchmark]
     public void IterateQueryLambdaThreeComponentsWithStruct()
     {
         var moveQuery = ecs.Query<Position, Velocity, Component3>();
@@ -124,14 +129,14 @@ public class EcsBenchmarks
         });
     }
 
-    [Benchmark]
+    //[Benchmark]
     public void IterateIActionOneComponent()
     {
         var moveQuery = ecs.Query<Position>();
         moveQuery.ForEach(new MoveSystemOneComponent());
     }
 
-    [Benchmark]
+    //[Benchmark]
     public void IterateIActionThreeComponents()
     {
         var moveQuery = ecs.Query<Position, Velocity, Component3>();
@@ -140,7 +145,7 @@ public class EcsBenchmarks
     }
 
 
-    [Benchmark]
+    //[Benchmark]
     public void InteraterEnumeratorOneComponent()
     {
         var moveQuery = ecs.Query<Position>();  
@@ -150,7 +155,7 @@ public class EcsBenchmarks
             pos.RW.Y += 1;
         }
     }
-    [Benchmark]
+    //[Benchmark]
     public void InteraterEnumeratorTwoComponents()
     {
         var moveQuery = ecs.Query<Position, Velocity>();  
@@ -173,7 +178,7 @@ public class EcsBenchmarks
         }
     }
 
-    [Benchmark]
+    //[Benchmark]
     public void IterateQueryQueryAction()
     {
         var moveQuery = ecs.Query<Position, Velocity>();
@@ -181,7 +186,7 @@ public class EcsBenchmarks
         moveQuery.ForEach(ref action);
     }
 
-    [Benchmark]
+    //[Benchmark]
     public void IterateSparseSetAVX()
     {
         var positionSet = CollectionsMarshal.AsSpan( ecs.GetComponentList<Position>());

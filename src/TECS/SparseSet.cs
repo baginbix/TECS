@@ -31,12 +31,17 @@ namespace TECS
             dense = !isTag ? new List<T>(size) : new List<T>(0);
             
             int numPages = (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
-            sparse =  new int[size][];
+            sparse =  new int[numPages][];
             ticks = new List<ulong>(size);
         }
         public void Add(Entity entity, T data, ulong currentTick){
             int pageIndex = entity.Id >> PAGE_SHIFT;
             int pageOffset = entity.Id & PAGE_MASK;
+            
+            if(pageIndex >= sparse.Length){
+                int newNumPages = pageIndex + 1;
+                Array.Resize(ref sparse, newNumPages);
+            }
 
             if (sparse[pageIndex] is null)
             {
@@ -84,6 +89,8 @@ namespace TECS
 
             int pageIndexLast = lastEntity.Id >> PAGE_SHIFT;
             int pageOffsetLast = lastEntity.Id & PAGE_MASK;
+            if(pageIndex >= sparse.Length || sparse[pageIndexLast] == null) return;
+            
             sparse[pageIndexLast][pageOffsetLast] = denseId;
             sparse[pageIndex][pageOffset] = -1;
         }
@@ -96,6 +103,9 @@ namespace TECS
         public OptionRef<T> GetValue(Entity entity, ulong currentTick){
             int pageIndex = entity.Id >> PAGE_SHIFT;
             int pageOffset = entity.Id & PAGE_MASK;
+            if(pageIndex >= sparse.Length || sparse[pageIndex] == null)
+                return OptionRef<T>.None;
+
             int index = sparse[pageIndex][pageOffset];
             if(index == -1)
                 return  OptionRef<T>.None;
@@ -111,7 +121,9 @@ namespace TECS
         {
             int pageIndex = entity.Id >> PAGE_SHIFT;
             int pageOffset = entity.Id & PAGE_MASK;
-            return entity.Id < sparse.Length && sparse[pageIndex][pageOffset] != -1;
+            return entity.Id < sparse.Length && 
+                   sparse[pageIndex] != null && 
+                   sparse[pageIndex][pageOffset] != -1;
         }
 
         public List<Entity> GetEntities()

@@ -152,8 +152,8 @@ where  E: struct
                 int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
                 int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
-                if((queryFilter.exludeMask & entityMask) != 0) continue;
-                if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
+                if(entityMask.Intersects(in queryFilter.exludeMask)) continue;
+                if(!entityMask.ContainsAll(in queryFilter.includeMask)) continue;
                 if(indexE != -1){
                     func(ref denseT[i], ref denseE[indexE]);
                 }   
@@ -170,8 +170,8 @@ where  E: struct
                 int pageOffset = entityId & SparseSet<E>.PAGE_MASK;
                 int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
-                if((queryFilter.exludeMask & entityMask) != 0) continue;
-                if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
+                if(entityMask.Intersects(in queryFilter.exludeMask)) continue;
+                if(!entityMask.ContainsAll(in queryFilter.includeMask)) continue;
                 if(indexE != -1){
                     func(ref denseT[indexE], ref denseE[i]);
                 }   
@@ -195,8 +195,8 @@ where  E: struct
                 int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
                 int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
-                if((queryFilter.exludeMask & entityMask) != 0) continue;
-                if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
+                if(entityMask.Intersects(in queryFilter.exludeMask)) continue;
+                if(!entityMask.ContainsAll(in queryFilter.includeMask)) continue;
                 if(indexE != -1){
                     func(entities[i],ref denseT[i], ref denseE[indexE]);
                 }   
@@ -213,8 +213,8 @@ where  E: struct
                 int pageOffset = entityId & SparseSet<E>.PAGE_MASK;
                 int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
-                if((queryFilter.exludeMask & entityMask) != 0) continue;
-                if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
+                if(entityMask.Intersects(in queryFilter.exludeMask)) continue;
+                if(!entityMask.ContainsAll(in queryFilter.includeMask)) continue;
                 if(indexE != -1){
                     func(entities[i], ref denseT[indexE], ref denseE[i]);
                 }   
@@ -239,8 +239,8 @@ where  E: struct
                 int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
                 int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
-                if((queryFilter.exludeMask & entityMask) != 0) continue;
-                if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
+                if(entityMask.Intersects(in queryFilter.exludeMask)) continue;
+                if(!entityMask.ContainsAll(in queryFilter.includeMask)) continue;
 
                 if(indexE != -1){
                     action.Execute(ref denseT[i], ref denseE[indexE]);
@@ -258,8 +258,8 @@ where  E: struct
                 int pageOffset = entityId & SparseSet<E>.PAGE_MASK;
                 int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
-                if((queryFilter.exludeMask & entityMask) != 0) continue;
-                if((queryFilter.includeMask & entityMask) != queryFilter.includeMask) continue;
+                if(entityMask.Intersects(in queryFilter.exludeMask)) continue;
+                if(!entityMask.ContainsAll(in queryFilter.includeMask)) continue;
                 if(indexE != -1){
                     action.Execute(ref denseT[indexE], ref denseE[i]);
                 }   
@@ -270,20 +270,20 @@ where  E: struct
     public QueryEnumerator GetEnumerator() => new QueryEnumerator(sparseE, sparseT, entityMasks, queryFilter, lastSystemTick, lastGlobalTick, changedT, changedE);
 
 
-    public ref struct QueryEnumerator
+    public unsafe ref struct QueryEnumerator
     {
         private ref E denseE;
         private ref T denseT;
         private ref Entity denseEntitites;
         private readonly int denseEntityLength;
-        private int[][] sparseEntitiesE;
-        private int[][] sparseEntitiesT;
+        private ref int[] sparseEntitiesE;
+        private ref int[] sparseEntitiesT;
 
         private readonly int maxEntT, maxEntE;
 
         private ref Bitset entitiesMask;
-        private readonly Bitset includeMask;
-        private readonly Bitset exludeMask;
+        private readonly ref Bitset includeMask;
+        private readonly ref Bitset excludeMask;
 
         private readonly bool tIsSmaller;
         private int index;
@@ -303,15 +303,18 @@ where  E: struct
             this.denseE = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(sparseE.GetDense()));
             this.denseT = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(sparseT.GetDense()));
 
-            sparseEntitiesT = sparseT.GetSparseSet();
-            sparseEntitiesE = sparseE.GetSparseSet();
+            sparseEntitiesT = ref MemoryMarshal.GetReference(sparseT.GetSparseSet());
+            sparseEntitiesE = ref MemoryMarshal.GetReference(sparseE.GetSparseSet());
 
             maxEntT = sparseEntitiesT.Length;
             maxEntE = sparseEntitiesE.Length;
 
             this.entitiesMask = ref MemoryMarshal.GetReference(entitiesMask);
-            this.includeMask = queryFilter.includeMask;
-            this.exludeMask = queryFilter.exludeMask;
+            this.includeMask = ref queryFilter.includeMask;
+            this.excludeMask = ref queryFilter.exludeMask;
+
+            hasInclude = !includeMask.IsEmpty();
+            hasExclude = !excludeMask.IsEmpty();
 
             // Determine which set drives the loop
             tIsSmaller = sparseT.Size < sparseE.Size;
@@ -352,18 +355,27 @@ where  E: struct
                         // OPTIMIZATION 4: Safe ID fetch
                         int entityId = Unsafe.Add(ref denseEntitites, index).Id;
 
-                        Bitset entityMask = Unsafe.Add(ref entitiesMask, entityId);
-                        if((exludeMask & entityMask) != 0) continue;
-                        if((includeMask & entityMask) != includeMask) continue;
-                        int pageIndex = entityId >> SparseSet<E>.PAGE_SHIFT;
-                        if(pageIndex >= maxEntE) continue;
+                        // 1. CHEAPEST CHECK FIRST: Resolve the pages
+                        int pageIndex = entityId >> SparseSet<T>.PAGE_SHIFT;
+                        if(pageIndex >= sparseEntitiesE.Length) continue;
+                        int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
 
-                        int[] page = sparseEntitiesE[pageIndex];
+                        int[] page = Unsafe.Add(ref sparseEntitiesT, pageIndex);
                         if(page == null) continue;
 
-                        int pageOffset = entityId & SparseSet<E>.PAGE_MASK;
-                        idxE = page[pageOffset];
-                        if(idxE < 0) continue; // Sign check trick
+                        // 2. SECOND CHEAPEST: Check the sparse array
+                        ref int pageDataRef = ref MemoryMarshal.GetArrayDataReference(page);
+                        idxE = Unsafe.Add(ref pageDataRef, pageOffset);
+                        if(idxE < 0) continue; 
+
+                        // 3. HEAVY CHECK LAST: Only read the 128-byte mask if it actually exists in the sparse set!
+                        // AND ONLY RUN THIS IF FILTERS ACTUALLY EXIST!
+                        if (hasExclude || hasInclude)
+                        {
+                            ref Bitset entityMask = ref Unsafe.Add(ref entitiesMask, entityId);
+                            if(hasExclude && entityMask.Intersects(in excludeMask)) continue;
+                            if(hasInclude && !entityMask.ContainsAll(in includeMask)) continue;
+                        }
                         
                         if(changedT && Unsafe.Add(ref ticksT, index) <= lastSystemTick) continue;
                         if(changedE && Unsafe.Add(ref ticksE, idxE) <= lastSystemTick) continue;
@@ -377,21 +389,29 @@ where  E: struct
                     while(++index < denseEntityLength)
                     {
                         int entityId = Unsafe.Add(ref denseEntitites, index).Id;
+                        //if(entityId >= maxEntT) continue;
 
-                        Bitset entityMask = Unsafe.Add(ref entitiesMask, entityId);
-                        if((exludeMask & entityMask) != 0) continue;
-                        if((includeMask & entityMask) != includeMask) continue;
-                        
+                        // 1. CHEAPEST CHECK FIRST: Resolve the pages
                         int pageIndex = entityId >> SparseSet<T>.PAGE_SHIFT;
-                        if(pageIndex >= maxEntT) continue;
-                        
-                        int[] page = sparseEntitiesT[pageIndex];
-                        if(page == null) continue;
-                        
+                        if(pageIndex >= sparseEntitiesT.Length) continue;
                         int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
-                        idxT = page[pageOffset];
+
+                        int[] page = Unsafe.Add(ref sparseEntitiesT, pageIndex);
+                        if(page == null) continue;
+
+                        // 2. SECOND CHEAPEST: Check the sparse array
+                        ref int pageDataRef = ref MemoryMarshal.GetArrayDataReference(page);
+                        idxT = Unsafe.Add(ref pageDataRef, pageOffset);
                         if(idxT < 0) continue; 
-                        
+
+                        // 3. HEAVY CHECK LAST: Only read the 128-byte mask if it actually exists in the sparse set!
+                        // AND ONLY RUN THIS IF FILTERS ACTUALLY EXIST!
+                        if (hasExclude || hasInclude)
+                        {
+                            ref Bitset entityMask = ref Unsafe.Add(ref entitiesMask, entityId);
+                            if(hasExclude && entityMask.Intersects(in excludeMask)) continue;
+                            if(hasInclude && !entityMask.ContainsAll(in includeMask)) continue;
+                        }
                         if(changedT && Unsafe.Add(ref ticksT, idxT) <= lastSystemTick) continue;
                         if(changedE && Unsafe.Add(ref ticksE, index) <= lastSystemTick) continue;
 
@@ -408,20 +428,32 @@ where  E: struct
                     while(++index < denseEntityLength)
                     {
                         int entityId = Unsafe.Add(ref denseEntitites, index).Id;
+                        //if(entityId >= maxEntT) continue;
 
-                        Bitset entityMask = Unsafe.Add(ref entitiesMask, entityId);
-                        if((exludeMask & entityMask) != 0) continue;
-                        if((includeMask & entityMask) != includeMask) continue;
-                        
-                        int pageIndex = entityId >> SparseSet<E>.PAGE_SHIFT;
-                        if(pageIndex >= maxEntE) continue;
+                        // 1. CHEAPEST CHECK FIRST: Resolve the pages
+                        int pageIndex = entityId >> SparseSet<T>.PAGE_SHIFT;
+                        if(pageIndex >= sparseEntitiesE.Length) continue;
+                        int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
 
-                        int[] page = sparseEntitiesE[pageIndex];
+                        int[] page = Unsafe.Add(ref sparseEntitiesT, pageIndex);
                         if(page == null) continue;
-                        
-                        int pageOffset = entityId & SparseSet<E>.PAGE_MASK;
-                        idxE = page[pageOffset];
+
+                        // 2. SECOND CHEAPEST: Check the sparse array
+                        ref int pageDataRef = ref MemoryMarshal.GetArrayDataReference(page);
+                        idxE = Unsafe.Add(ref pageDataRef, pageOffset);
                         if(idxE < 0) continue; 
+
+                        // 3. HEAVY CHECK LAST: Only read the 128-byte mask if it actually exists in the sparse set!
+                        // AND ONLY RUN THIS IF FILTERS ACTUALLY EXIST!
+                        if (hasExclude || hasInclude)
+                        {
+                            ref Bitset entityMask = ref Unsafe.Add(ref entitiesMask, entityId);
+                            if(hasExclude && entityMask.Intersects(in excludeMask)) continue;
+                            if(hasInclude && !entityMask.ContainsAll(in includeMask)) continue;
+                        }
+
+                        if(changedT && Unsafe.Add(ref ticksT, index) <= lastSystemTick) continue;
+                        if(changedE && Unsafe.Add(ref ticksE, idxE) <= lastSystemTick) continue;
 
                         idxT = index;
                         return true;
@@ -432,20 +464,33 @@ where  E: struct
                     while(++index < denseEntityLength)
                     {
                         int entityId = Unsafe.Add(ref denseEntitites, index).Id;
+                        //if(entityId >= maxEntT) continue;
 
-                        Bitset entityMask = Unsafe.Add(ref entitiesMask, entityId);
-                        if((exludeMask & entityMask) != 0) continue;
-                        if((includeMask & entityMask) != includeMask) continue;
-                        
+                        // 1. CHEAPEST CHECK FIRST: Resolve the pages
                         int pageIndex = entityId >> SparseSet<T>.PAGE_SHIFT;
-                        if(pageIndex >= maxEntT) continue;
+                        if(pageIndex >= sparseEntitiesT.Length) continue;
+                        int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
 
-                        int[] page = sparseEntitiesT[pageIndex];
+                        int[] page = Unsafe.Add(ref sparseEntitiesT, pageIndex);
                         if(page == null) continue;
 
-                        int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
-                        idxT = page[pageOffset];
+                        // 2. SECOND CHEAPEST: Check the sparse array
+                        ref int pageDataRef = ref MemoryMarshal.GetArrayDataReference(page);
+                        idxT = Unsafe.Add(ref pageDataRef, pageOffset);
                         if(idxT < 0) continue; 
+
+                        // 3. HEAVY CHECK LAST: Only read the 128-byte mask if it actually exists in the sparse set!
+                        // AND ONLY RUN THIS IF FILTERS ACTUALLY EXIST!
+                        if (hasExclude || hasInclude)
+                        {
+                            ref Bitset entityMask = ref Unsafe.Add(ref entitiesMask, entityId);
+                            if(hasExclude && entityMask.Intersects(in excludeMask)) continue;
+                            if(hasInclude && !entityMask.ContainsAll(in includeMask)) continue;
+                        }
+
+                        if(changedT && Unsafe.Add(ref ticksT, idxT) <= lastSystemTick) continue;
+                        if(changedE && Unsafe.Add(ref ticksE, index) <= lastSystemTick) continue;
+    
 
                         idxE = index;
                         return true;
