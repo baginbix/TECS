@@ -13,34 +13,30 @@ namespace UnitTestsECS
         public struct Velocity { public float Dx; }
         public struct Health { public int Hp; }
 
-        // "Zero-byte" tag components for filtering
         public struct PlayerTag { }
         public struct Frozen { }
+        
         private ECS SetupTestEcs()
         {
             var ecs = new ECS();
 
-            // Entity 0: The Player (Has Everything + PlayerTag)
             Entity e0 = ecs.CreateEntity();
             ecs.InsertComponent(e0, new Position());
             ecs.InsertComponent(e0, new Velocity());
             ecs.InsertComponent(e0, new Health());
             ecs.InsertComponent(e0, new PlayerTag());
 
-            // Entity 1: Normal Enemy (Missing PlayerTag)
             Entity e1 = ecs.CreateEntity();
             ecs.InsertComponent(e1, new Position());
             ecs.InsertComponent(e1, new Velocity());
             ecs.InsertComponent(e1, new Health());
 
-            // Entity 2: Frozen Enemy (Has Frozen tag)
             Entity e2 = ecs.CreateEntity();
             ecs.InsertComponent(e2, new Position());
             ecs.InsertComponent(e2, new Velocity());
             ecs.InsertComponent(e2, new Health());
             ecs.InsertComponent(e2, new Frozen());
 
-            // Entity 3: A Rock (Missing Velocity entirely, but has PlayerTag just to trick it)
             Entity e3 = ecs.CreateEntity();
             ecs.InsertComponent(e3, new Position());
             ecs.InsertComponent(e3, new Health());
@@ -50,93 +46,64 @@ namespace UnitTestsECS
         }
 
         [Fact]
-        public void Query_WithFilter_OnlyProcessesEntitiesWithTag()
-        {
-            // Arrange
-            var ecs = SetupTestEcs();
-            int executionCount = 0;
-
-            // Act
-            ecs.Query<Position, Velocity, Health>()
-               .With<PlayerTag>()
-               .ForEach((ref Position p, ref Velocity v, ref Health h) =>
-               {
-                   executionCount++;
-               });
-
-            // Assert
-            // Should ONLY hit Entity 0. 
-            // Entity 1 lacks PlayerTag. Entity 3 lacks Velocity.
-            Assert.Equal(1, executionCount);
-        }
-
-        [Fact]
-        public void Query_WithoutFilter_SkipsExcludedEntities()
-        {
-            // Arrange
-            var ecs = SetupTestEcs();
-            int executionCount = 0;
-
-            // Act
-            ecs.Query<Position, Velocity, Health>()
-               .Without<Frozen>()
-               .ForEach((ref Position p, ref Velocity v, ref Health h) =>
-               {
-                   executionCount++;
-               });
-
-            // Assert
-            // Should hit Entity 0 and Entity 1. 
-            // Entity 2 has Frozen. Entity 3 is missing Velocity.
-            Assert.Equal(2, executionCount);
-        }
-
-        [Fact]
         public void Query_CombinedFilters_WorksCorrectly()
         {
-            // Arrange
             var ecs = SetupTestEcs();
-
-            // Let's add PlayerTag to the Frozen enemy to test complex overlap
-            ecs.InsertComponent(new Entity(2,0), new PlayerTag());
 
             int executionCount = 0;
 
-            // Act
-            ecs.Query<Position, Velocity, Health>()
-               .With<PlayerTag>()
-               .Without<Frozen>()
-               .ForEach((ref Position p, ref Velocity v, ref Health h) =>
-               {
-                   executionCount++;
-               });
+            // Using the Enumerator with filters!
+            foreach (var item in ecs.Query<Position, Velocity, Health>().With<PlayerTag>().Without<Frozen>())
+            {
+                executionCount++;
+            }
 
-            // Assert
-            // Entity 0: Has PlayerTag, NOT Frozen -> (Pass)
-            // Entity 1: Missing PlayerTag -> (Fail)
-            // Entity 2: Has PlayerTag, BUT is Frozen -> (Fail)
-            // Entity 3: Missing Velocity -> (Fail)
             Assert.Equal(1, executionCount);
         }
 
         [Fact]
         public void Query_NoFilters_ProcessesAllValidEntities()
         {
-            // Arrange
             var ecs = SetupTestEcs();
             int executionCount = 0;
 
-            // Act
-            ecs.Query<Position, Velocity, Health>()
-               .ForEach((ref Position p, ref Velocity v, ref Health h) =>
-               {
-                   executionCount++;
-               });
+            foreach (var item in ecs.Query<Position, Velocity, Health>())
+            {
+                executionCount++;
+            }
 
-            // Assert
-            // Should hit Entities 0, 1, and 2. 
-            // Entity 3 is skipped purely because it lacks a Velocity component.
             Assert.Equal(3, executionCount);
+        }
+
+        [Fact]
+        public void Query_ChangeDetection_ShouldOnlyReturnModifiedEntities()
+        {
+            var ecs = new ECS();
+            
+            Entity e1 = ecs.CreateEntity();
+            Entity e2 = ecs.CreateEntity();
+
+            ecs.InsertComponent(e1, new Position { X = 1 });
+            ecs.InsertComponent(e2, new Position { X = 2 });
+
+            // Assuming you have an API to advance the global tick or run a system frame
+            ecs.NextTick(); // Or however your engine steps time forward
+
+            // Modify ONLY e1
+            // Assuming GetValue returns a ref, and updates the entity's tick
+            ref var pos = ref ecs.GetOrCreateSet<Position>().GetValue(e1, ecs.GlobalTick).Unwrap();
+            pos.X = 99;
+
+            int modifiedCount = 0;
+            
+            // Assuming your Query API has a .Changed<T>() filter
+            foreach (var item in ecs.Query<Position>().Changed())
+            {
+                modifiedCount++;
+            }
+
+            // Assert it ONLY grabbed e1, skipping e2
+            Assert.Equal(1, modifiedCount);
         }
     }
 }

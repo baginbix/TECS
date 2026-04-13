@@ -8,7 +8,7 @@ namespace UnitTestsECS
     public record struct MockEvent(int damage);
     public struct MockSystemSendEvent: ISystem
     {
-        public void Run(IEngine ecs, ref CommandBuffer cmd)
+        public void Run(IEngine ecs, CommandBuffer cmd)
         {
             var e = new MockEvent(5);
             ecs.GetEventWriter<MockEvent>().Send(ref e);

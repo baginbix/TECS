@@ -116,4 +116,42 @@ public class CommandBufferTests
         Assert.Single(velocities);
         Assert.Equal(2, velocities[0].Dx);
     }
+
+    [Fact]
+public void CommandBuffer_ShouldResolveContradictoryCommands()
+{
+    var ecs = new ECS();
+    var cmd = new CommandBuffer();
+
+    Entity e = ecs.CreateEntity();
+
+    // The "Change of Heart": Add it, then immediately remove it before flushing
+    cmd.InsertComponent(new Position { X = 100 }, e);
+    cmd.RemoveComponent<Position>(e);
+    
+    cmd.Flush(ecs);
+
+    // Assert the component does NOT exist
+    Assert.Empty(ecs.GetComponentList<Position>());
+}
+
+    [Fact]
+    public void CommandBuffer_ShouldHandleDoubleDeletesGracefully()
+    {
+        var ecs = new ECS();
+        var cmd = new CommandBuffer();
+
+        Entity e = ecs.CreateEntity();
+        
+        // Two different systems both decide to destroy the same entity this frame
+        cmd.DestroyEntity(e);
+        cmd.DestroyEntity(e);
+        
+        // This flush should NOT crash! It should destroy it once and ignore the second.
+        cmd.Flush(ecs); 
+        
+        // To verify it didn't corrupt the state, try making a new entity
+        Entity next = ecs.CreateEntity();
+        Assert.True(next.Id >= 0);
+    }
 }
