@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 using System.Threading.Tasks;
 
 namespace TECS
@@ -16,25 +18,39 @@ namespace TECS
 
         public Bitset()
         {
+            for(int i = 0; i < 16; i++){
+                parts[i] = 0;
+            }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly bool  Intersects(in Bitset b)
-        {
-            for(int i = 0; i < 16; i++){
-                if((parts[i] & b.parts[i]) != 0) return true;
-            }
-            return false;
-        }
+[MethodImpl(MethodImplOptions.AggressiveInlining)]
+public readonly bool Intersects(ref Bitset b) // Changed from 'in' to 'ref'
+{
+    // Grab raw references to the first element to bypass 'fixed' GC pinning
+    ref ulong aRef = ref Unsafe.AsRef(in parts[0]);
+    ref ulong bRef = ref Unsafe.AsRef(in b.parts[0]);
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly bool ContainsAll(in Bitset b)
-        {
-            for(int i = 0; i < 16; i++){
-                if((parts[i] & b.parts[i]) != b.parts[i]) return false;
-            }
+    for (int i = 0; i < 16; i++)
+    {
+        if ((Unsafe.Add(ref aRef, i) & Unsafe.Add(ref bRef, i)) != 0) 
             return true;
-        }
+    }
+    return false;
+}
+
+[MethodImpl(MethodImplOptions.AggressiveInlining)]
+public readonly bool ContainsAll(ref Bitset b) // Changed from 'in' to 'ref'
+{
+    ref ulong aRef = ref Unsafe.AsRef(in parts[0]);
+    ref ulong bRef = ref Unsafe.AsRef(in b.parts[0]);
+
+    for (int i = 0; i < 16; i++)
+    {
+        if ((Unsafe.Add(ref aRef, i) & Unsafe.Add(ref bRef, i)) != Unsafe.Add(ref bRef, i)) 
+            return false;
+    }
+    return true;
+}
 
         public static bool operator ==(Bitset a, Bitset b)
         {
