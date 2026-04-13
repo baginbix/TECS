@@ -1,12 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Threading.Tasks;
-using TECS;
+
 using TECS.Components;
 
-namespace src.Query
+namespace TECS.Queries
 {
     public struct QueryFilter
     {

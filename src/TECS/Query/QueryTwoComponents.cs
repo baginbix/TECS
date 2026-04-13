@@ -1,13 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
+
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
-using src.Query;
+using TECS.Queries.Components;
 
-namespace TECS.Query;
+namespace TECS.Queries;
 
 
 public ref struct Query<T, E> 
@@ -24,8 +20,9 @@ where  E: struct
         private readonly ref E component2;
         private readonly Entity entity;
 
-        public QueryItem(ref T comp1, ref E comp2, ref ulong tick1, ref ulong tick2, ulong globalTick)
+        public QueryItem(Entity entity, ref T comp1, ref E comp2, ref ulong tick1, ref ulong tick2, ulong globalTick)
         {
+            this.entity = entity;
             component1 = ref comp1;
             component2 = ref comp2;
             this.tick1 = ref tick1;
@@ -47,7 +44,7 @@ where  E: struct
 
         public Entity Entity => entity;
 
-        public ref readonly TRead RO<TRead>() where TRead : struct
+        public ref readonly TRead Read<TRead>() where TRead : struct
         {
             if(typeof(TRead) == typeof(T))
             {
@@ -57,12 +54,12 @@ where  E: struct
             {
                 return ref Unsafe.As<E, TRead>(ref component2);
             }
-
+            
             throw new InvalidOperationException($"Type {typeof(TRead)} is not part of the query");
 
         }
 
-        public ref TWrite RW<TWrite>() where TWrite : struct
+        public ref TWrite Write<TWrite>() where TWrite : struct
         {
             if(typeof(TWrite) == typeof(T))
             {
@@ -83,7 +80,7 @@ where  E: struct
 
     private readonly Span<Bitset> entityMasks;
 
-    private readonly QueryFilter queryFilter;
+    private QueryFilter queryFilter;
     private readonly ulong lastGlobalTick;  
     private readonly ulong lastSystemTick;
 
@@ -152,8 +149,8 @@ where  E: struct
                 int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
                 int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
-                if(entityMask.Intersects(in queryFilter.exludeMask)) continue;
-                if(!entityMask.ContainsAll(in queryFilter.includeMask)) continue;
+                if(entityMask.Intersects(ref queryFilter.exludeMask)) continue;
+                if(!entityMask.ContainsAll(ref queryFilter.includeMask)) continue;
                 if(indexE != -1){
                     func(ref denseT[i], ref denseE[indexE]);
                 }   
@@ -170,8 +167,8 @@ where  E: struct
                 int pageOffset = entityId & SparseSet<E>.PAGE_MASK;
                 int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
-                if(entityMask.Intersects(in queryFilter.exludeMask)) continue;
-                if(!entityMask.ContainsAll(in queryFilter.includeMask)) continue;
+                if(entityMask.Intersects(ref queryFilter.exludeMask)) continue;
+                if(!entityMask.ContainsAll(ref queryFilter.includeMask)) continue;
                 if(indexE != -1){
                     func(ref denseT[indexE], ref denseE[i]);
                 }   
@@ -195,8 +192,8 @@ where  E: struct
                 int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
                 int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
-                if(entityMask.Intersects(in queryFilter.exludeMask)) continue;
-                if(!entityMask.ContainsAll(in queryFilter.includeMask)) continue;
+                if(entityMask.Intersects(ref queryFilter.exludeMask)) continue;
+                if(!entityMask.ContainsAll(ref queryFilter.includeMask)) continue;
                 if(indexE != -1){
                     func(entities[i],ref denseT[i], ref denseE[indexE]);
                 }   
@@ -213,8 +210,8 @@ where  E: struct
                 int pageOffset = entityId & SparseSet<E>.PAGE_MASK;
                 int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
-                if(entityMask.Intersects(in queryFilter.exludeMask)) continue;
-                if(!entityMask.ContainsAll(in queryFilter.includeMask)) continue;
+                if(entityMask.Intersects(ref queryFilter.exludeMask)) continue;
+                if(!entityMask.ContainsAll(ref queryFilter.includeMask)) continue;
                 if(indexE != -1){
                     func(entities[i], ref denseT[indexE], ref denseE[i]);
                 }   
@@ -239,8 +236,8 @@ where  E: struct
                 int pageOffset = entityId & SparseSet<T>.PAGE_MASK;
                 int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
-                if(entityMask.Intersects(in queryFilter.exludeMask)) continue;
-                if(!entityMask.ContainsAll(in queryFilter.includeMask)) continue;
+                if(entityMask.Intersects(ref queryFilter.exludeMask)) continue;
+                if(!entityMask.ContainsAll(ref queryFilter.includeMask)) continue;
 
                 if(indexE != -1){
                     action.Execute(ref denseT[i], ref denseE[indexE]);
@@ -258,8 +255,8 @@ where  E: struct
                 int pageOffset = entityId & SparseSet<E>.PAGE_MASK;
                 int indexE = entitiesE[pageIndex][pageOffset];
                 Bitset entityMask = entityMasks[entityId];
-                if(entityMask.Intersects(in queryFilter.exludeMask)) continue;
-                if(!entityMask.ContainsAll(in queryFilter.includeMask)) continue;
+                if(entityMask.Intersects(ref queryFilter.exludeMask)) continue;
+                if(!entityMask.ContainsAll(ref queryFilter.includeMask)) continue;
                 if(indexE != -1){
                     action.Execute(ref denseT[indexE], ref denseE[i]);
                 }   
@@ -267,9 +264,13 @@ where  E: struct
         }
     }
 
-    public QueryEnumerator GetEnumerator() => new QueryEnumerator(sparseE, sparseT, entityMasks, queryFilter, lastSystemTick, lastGlobalTick, changedT, changedE);
+public unsafe QueryEnumerator GetEnumerator() 
+{
+    QueryFilter* filterPtr = (QueryFilter*)Unsafe.AsPointer(ref queryFilter);
+    return new QueryEnumerator(sparseE, sparseT, entityMasks, filterPtr, lastSystemTick, lastGlobalTick, changedT, changedE);
+}
 
-
+    [StructLayout(LayoutKind.Auto)]
     public unsafe ref struct QueryEnumerator
     {
         private ref E denseE;
@@ -279,26 +280,31 @@ where  E: struct
         private ref int[] sparseEntitiesE;
         private ref int[] sparseEntitiesT;
 
-        private readonly int maxEntT, maxEntE;
+        private ref int[] cachePageE;
+        private ref int[] cachePageT;
+        
 
         private ref Bitset entitiesMask;
-        private readonly ref Bitset includeMask;
-        private readonly ref Bitset excludeMask;
 
-        private readonly bool tIsSmaller;
-        private int index;
-        private int idxT, idxE;
+        //TODO: Speed up how bitsets are used.
+        private ref Bitset includeMask;
+        private ref Bitset excludeMask;
 
         private readonly ulong lastGlobalTick;   
         private readonly ulong lastSystemTick;     
         private ref ulong ticksT;
         private ref ulong ticksE;
+        private int index;
+        private int idxT, idxE;
+        private readonly bool tIsSmaller;
         bool changedT = false;
         bool changedE = false;
         bool hasInclude = false;
         bool hasExclude = false;
 
-        public QueryEnumerator(SparseSet<E> sparseE, SparseSet<T> sparseT, Span<Bitset> entitiesMask, QueryFilter queryFilter, ulong systemTick, ulong globalTick, bool changedT, bool changedE)
+        private bool isCacheValid = false;
+
+        public QueryEnumerator(SparseSet<E> sparseE, SparseSet<T> sparseT, Span<Bitset> entitiesMask, QueryFilter* queryFilter, ulong systemTick, ulong globalTick, bool changedT, bool changedE)
         {
             this.denseE = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(sparseE.GetDense()));
             this.denseT = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(sparseT.GetDense()));
@@ -306,12 +312,10 @@ where  E: struct
             sparseEntitiesT = ref MemoryMarshal.GetReference(sparseT.GetSparseSet());
             sparseEntitiesE = ref MemoryMarshal.GetReference(sparseE.GetSparseSet());
 
-            maxEntT = sparseEntitiesT.Length;
-            maxEntE = sparseEntitiesE.Length;
 
             this.entitiesMask = ref MemoryMarshal.GetReference(entitiesMask);
-            this.includeMask = ref queryFilter.includeMask;
-            this.excludeMask = ref queryFilter.exludeMask;
+            this.includeMask =  ref queryFilter->includeMask;
+            this.excludeMask =  ref queryFilter->exludeMask;
 
             hasInclude = !includeMask.IsEmpty();
             hasExclude = !excludeMask.IsEmpty();
@@ -373,8 +377,8 @@ where  E: struct
                         if (hasExclude || hasInclude)
                         {
                             ref Bitset entityMask = ref Unsafe.Add(ref entitiesMask, entityId);
-                            if(hasExclude && entityMask.Intersects(in excludeMask)) continue;
-                            if(hasInclude && !entityMask.ContainsAll(in includeMask)) continue;
+                            if(hasExclude && entityMask.Intersects(ref excludeMask)) continue;
+                            if(hasInclude && !entityMask.ContainsAll(ref includeMask)) continue;
                         }
                         
                         if(changedT && Unsafe.Add(ref ticksT, index) <= lastSystemTick) continue;
@@ -409,8 +413,8 @@ where  E: struct
                         if (hasExclude || hasInclude)
                         {
                             ref Bitset entityMask = ref Unsafe.Add(ref entitiesMask, entityId);
-                            if(hasExclude && entityMask.Intersects(in excludeMask)) continue;
-                            if(hasInclude && !entityMask.ContainsAll(in includeMask)) continue;
+                            if(hasExclude && entityMask.Intersects(ref excludeMask)) continue;
+                            if(hasInclude && !entityMask.ContainsAll(ref includeMask)) continue;
                         }
                         if(changedT && Unsafe.Add(ref ticksT, idxT) <= lastSystemTick) continue;
                         if(changedE && Unsafe.Add(ref ticksE, index) <= lastSystemTick) continue;
@@ -448,8 +452,8 @@ where  E: struct
                         if (hasExclude || hasInclude)
                         {
                             ref Bitset entityMask = ref Unsafe.Add(ref entitiesMask, entityId);
-                            if(hasExclude && entityMask.Intersects(in excludeMask)) continue;
-                            if(hasInclude && !entityMask.ContainsAll(in includeMask)) continue;
+                            if(hasExclude && entityMask.Intersects(ref excludeMask)) continue;
+                            if(hasInclude && !entityMask.ContainsAll(ref includeMask)) continue;
                         }
 
                         if(changedT && Unsafe.Add(ref ticksT, index) <= lastSystemTick) continue;
@@ -477,15 +481,15 @@ where  E: struct
                         // 2. SECOND CHEAPEST: Check the sparse array
                         ref int pageDataRef = ref MemoryMarshal.GetArrayDataReference(page);
                         idxT = Unsafe.Add(ref pageDataRef, pageOffset);
-                        if(idxT < 0) continue; 
+                        if(idxT < 0) continue;
 
                         // 3. HEAVY CHECK LAST: Only read the 128-byte mask if it actually exists in the sparse set!
                         // AND ONLY RUN THIS IF FILTERS ACTUALLY EXIST!
                         if (hasExclude || hasInclude)
                         {
                             ref Bitset entityMask = ref Unsafe.Add(ref entitiesMask, entityId);
-                            if(hasExclude && entityMask.Intersects(in excludeMask)) continue;
-                            if(hasInclude && !entityMask.ContainsAll(in includeMask)) continue;
+                            if(hasExclude && entityMask.Intersects(ref excludeMask)) continue;
+                            if(hasInclude && !entityMask.ContainsAll(ref includeMask)) continue;
                         }
 
                         if(changedT && Unsafe.Add(ref ticksT, idxT) <= lastSystemTick) continue;
@@ -506,6 +510,7 @@ where  E: struct
             get
             {
                 return new QueryItem(
+                    Unsafe.Add(ref denseEntitites, index),
                     ref Unsafe.Add(ref denseT, idxT), 
                     ref Unsafe.Add(ref denseE, idxE), 
                     ref Unsafe.Add(ref ticksT, idxT), 
