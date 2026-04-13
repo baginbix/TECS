@@ -1,13 +1,6 @@
-using System;
-using System.Collections.Generic;
-using TECS.Query;
-using TECS.Commands;
+using TECS.Queries;
 using TECS.Components;
-using TECS;
 using src.Event;
-using System.Diagnostics;
-using TECS.Plugins;
-using TECS.Systems;
 using TECS.Event;
 
 namespace TECS
@@ -31,7 +24,6 @@ namespace TECS
 
         Dictionary<Bitset, SparseSet<Entity>> groups;
 
-        ComponentBitRegistry componentBitRegistry;
 
         private Bitset[] entityMasks;
 
@@ -52,7 +44,6 @@ namespace TECS
             components = new ISparseSet[100];
             entityManager = new();
             groups = new();
-            componentBitRegistry = new();
             entityMasks = new Bitset[maxEntityCount];
             resources = new();
             MaxEntityCount = maxEntityCount;
@@ -90,6 +81,10 @@ namespace TECS
         {
             resources.Add(typeof(T), newResource);
         }
+        public void InsertResource<T>() where T:IResource, new()
+        {
+            resources.Add(typeof(T), new T());
+        }
 
         public T GetResource<T>()
         {
@@ -105,7 +100,7 @@ namespace TECS
             entityMasks[entityId.Id].SetBit(typeId);
         }
 
-        private SparseSet<T> GetOrCreateSet<T>() where T : struct
+        public SparseSet<T> GetOrCreateSet<T>() where T : struct
         {
             int typeID = ComponentID<T>.Value;
             if (typeID >= components.Length)
