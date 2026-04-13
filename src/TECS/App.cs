@@ -13,6 +13,8 @@ public class App
 
     private bool run = true;
 
+    private bool Initialized = false;
+
     public App(int maxEntitiesCount)
     {
         ecs = new ECS(maxEntitiesCount);
@@ -142,35 +144,40 @@ public class App
         ecs.InsertResource(resource);
         return this;
     }
-    
-    
     public void Run()
     {
-        ecs.NextTick();
-        systemManager.OnStart();
+        if(!Initialized)
+        {
+            ecs.InsertResource<Time.Time>();
+            systemManager.OnStart();
+            Initialized = true;
+        }
         systemManager.UpdateSystems(); 
         ecs.Flush();
+        ecs.NextTick(); 
     }
 
     public void RunLoop()
     {
+        if(Initialized)
+        {
+            throw new Exception("App is already running!");
+        }
         Time.Time timeResource = new Time.Time();
         ecs.InsertResource(timeResource);
         
         systemManager.OnStart();
-
+        Initialized = true;
         Stopwatch stopwatch = Stopwatch.StartNew();
         long lastTick = stopwatch.ElapsedTicks;
         while (run)
         {
             long currentTick = stopwatch.ElapsedTicks;
-            timeResource.DeltaTime = (float)(currentTick - lastTick);
+            timeResource.DeltaTime = (float)(currentTick - lastTick)/Stopwatch.Frequency;
             timeResource.TotalTime = (float)stopwatch.Elapsed.TotalSeconds;
             lastTick = currentTick;
             
-            
-            systemManager.UpdateSystems(); 
-            ecs.Flush();
+            Run();
         }
     }
 
