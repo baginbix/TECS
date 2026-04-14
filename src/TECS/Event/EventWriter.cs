@@ -14,7 +14,7 @@ namespace TECS.Event
     {
         private EventStream<T> stream;
 
-        public void Send (ref T data)
+        public void Send (T data)
         {
             if(stream is null)
             {

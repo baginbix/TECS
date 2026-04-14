@@ -15,9 +15,9 @@ public class App
 
     private bool Initialized = false;
 
-    public App(int maxEntitiesCount)
+    public App()
     {
-        ecs = new ECS(maxEntitiesCount);
+        ecs = new ECS();
         systemManager = new (ecs);
     }
 

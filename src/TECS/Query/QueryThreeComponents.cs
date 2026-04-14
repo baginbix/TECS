@@ -26,8 +26,6 @@ public interface IQueryAction<T, E, K> where T: struct where E: struct where K: 
 }
 
 
-
-
 public unsafe ref struct Query<T, E, K> 
 where T: struct 
 where  E: struct
