@@ -81,6 +81,13 @@ namespace TECS
             ticks[entity.Id] = currentTick;
             return new OptionRef<T>(ref CollectionsMarshal.AsSpan(dense)[index]);
         }
+        
+        public Option<T> GetReadonlyValue(Entity entity){
+            int index = sparse[entity.Id];
+            if(index == -1)
+                return  Option<T>.None;
+            return new Option<T>(ref CollectionsMarshal.AsSpan(dense)[index]);
+        }
 
         public List<T> GetDense(){
             return dense;

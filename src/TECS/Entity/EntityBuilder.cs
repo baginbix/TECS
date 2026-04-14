@@ -20,7 +20,7 @@ namespace TECS.Entities
 
         public EntityBuilder With<T>(T component) where T : struct
         {
-            cmd.InsertComponent(component, Id);
+            cmd.InsertComponent(Id, component);
             return this;
         }
 

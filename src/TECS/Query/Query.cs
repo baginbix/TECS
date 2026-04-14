@@ -45,9 +45,9 @@ public ref struct ComponentItem<T> where T: struct
         this.globalTick = globalTick;
     }
 
-    public ref readonly T RO => ref component;
+    public ref readonly T Read => ref component;
 
-    public ref T RW
+    public ref T Write
     {
         get
         {

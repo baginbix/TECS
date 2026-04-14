@@ -13,9 +13,9 @@ public class App
 
     private bool run = true;
 
-    public App(int maxEntitiesCount)
+    public App()
     {
-        ecs = new ECS(maxEntitiesCount);
+        ecs = new ECS();
         systemManager = new (ecs);
     }
 

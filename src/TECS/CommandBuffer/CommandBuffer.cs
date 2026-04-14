@@ -49,7 +49,7 @@ public class CommandBuffer
         return new EntityBuilder(this, entity);
     }
 
-    public void InsertComponent<T>(T component, Entity entity)
+    public void InsertComponent<T>(Entity entity,T component)
     where T : struct
     {
         var queue = GetOrCreateCommandQueue<T>();

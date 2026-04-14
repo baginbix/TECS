@@ -20,12 +20,13 @@ namespace TECS
         Query<T, E, K> Query<T, E, K>() where T : struct where E : struct where K : struct;
         EventWriter<TEvent> GetEventWriter<TEvent>() where TEvent : struct;
         EventReader<TEvent> ReadEvents<TEvent>() where TEvent : struct;
+        OptionRef<T> QueryComponent<T>(Entity entity) where T: struct;
+        Option<T> QueryReadonlyComponent<T>(Entity entity) where T : struct;
     }
 
     public class ECS : IEngine
     {
         public ulong GlobalTick { get; private set; } = 0;
-        readonly int MaxEntityCount;
         EntityManager entityManager;
         ISparseSet[] components;
 
@@ -47,21 +48,19 @@ namespace TECS
 
         bool stop = false;
 
-        public ECS(int maxEntityCount = 1000)
+        public ECS()
         {
+            int maxEntityCount = 1000;
             components = new ISparseSet[100];
             entityManager = new();
             groups = new();
             componentBitRegistry = new();
             entityMasks = new Bitset[maxEntityCount];
             resources = new();
-            MaxEntityCount = maxEntityCount;
             cachedWriters = new Dictionary<Type, IEventWriter>();
             cachedReaders = new Dictionary<(Type systemType, Type eventType), IEventReader>();
 
         }
-
-        public ECS() : this(1_000) { }
 
         public void NextTick()
         {
@@ -114,7 +113,7 @@ namespace TECS
             }
             if (components[typeID] == null)
             {
-                components[typeID] = new SparseSet<T>(MaxEntityCount);
+                components[typeID] = new SparseSet<T>(1000);
                 ComponentRegistry.Register(typeof(T));
             }
 
@@ -177,10 +176,21 @@ namespace TECS
             Bitset bitset = entityMasks[entity.Id];
             if (!groups.TryGetValue(bitset, out var group))
             {
-                group = new SparseSet<Entity>(MaxEntityCount);
+                group = new SparseSet<Entity>(1000);
                 groups.Add(bitset, group);
             }
             group.Add(entity, entity, GlobalTick);
+        }
+
+        public OptionRef<T> QueryComponent<T>(Entity entity) where T:struct
+        {
+            var set = GetOrCreateSet<T>();
+            return  set.GetValue(entity, GlobalTick);
+        }
+
+        public Option<T> QueryReadonlyComponent<T>(Entity entity) where T : struct
+        {
+            return GetOrCreateSet<T>().GetReadonlyValue(entity);
         }
 
         public Query<T> Query<T>()
