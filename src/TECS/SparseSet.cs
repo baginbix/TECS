@@ -114,7 +114,12 @@ namespace TECS
         }
         
         public Option<T> GetReadonlyValue(Entity entity){
-            int index = sparse[entity.Id];
+            int pageIndex = entity.Id >> PAGE_SHIFT;
+            int pageOffset = entity.Id & PAGE_MASK;
+            if(pageIndex >= sparse.Length || sparse[pageIndex] == null)
+                return Option<T>.None;
+
+            int index = sparse[pageIndex][pageOffset];
             if(index == -1)
                 return  Option<T>.None;
             return new Option<T>(ref CollectionsMarshal.AsSpan(dense)[index]);

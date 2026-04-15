@@ -47,7 +47,7 @@ public class CommandBufferTests
         Assert.True(fakeEntity.Id < 0);
 
         // Attach a component to the fake ID
-        cmd.InsertComponent(new Position { X = 99 }, fakeEntity);
+        cmd.InsertComponent(fakeEntity, new Position { X = 99 });
 
         // Assert BEFORE flush: ECS should have zero components
         Assert.Empty(ecs.QueryComponent<Position>());
@@ -73,8 +73,8 @@ public class CommandBufferTests
         Entity fake2 = cmd.SpawnEntity();
 
         // Give them different values so we can verify they didn't overwrite each other
-        cmd.InsertComponent(new Position { X = 10 }, fake1);
-        cmd.InsertComponent(new Position { X = 20 }, fake2);
+        cmd.InsertComponent(fake1, new Position { X = 10 });
+        cmd.InsertComponent(fake2, new Position { X = 20 });
 
         cmd.Flush(ecs);
 
@@ -100,7 +100,7 @@ public class CommandBufferTests
         ecs.InsertComponent(realEntity, new Position { X = 5 });
 
         // Act - Queue an addition and a removal
-        cmd.InsertComponent(new Velocity { Dx = 2 }, realEntity);
+        cmd.InsertComponent(realEntity, new Velocity { Dx = 2 });
         cmd.RemoveComponent<Position>(realEntity);
 
         // Assert BEFORE flush: Should only have Position, no Velocity
@@ -126,7 +126,7 @@ public void CommandBuffer_ShouldResolveContradictoryCommands()
     Entity e = ecs.CreateEntity();
 
     // The "Change of Heart": Add it, then immediately remove it before flushing
-    cmd.InsertComponent(new Position { X = 100 }, e);
+    cmd.InsertComponent(e, new Position { X = 100 });
     cmd.RemoveComponent<Position>(e);
     
     cmd.Flush(ecs);

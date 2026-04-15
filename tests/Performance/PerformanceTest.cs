@@ -38,7 +38,7 @@ public class EcsBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        ecs = new ECS(EntityCount);
+        ecs = new ECS();
         cmd = new CommandBuffer();
 
         for (int i = 0; i < EntityCount; i++)
@@ -50,7 +50,7 @@ public class EcsBenchmarks
             Random rand = new Random();
             if(rand.NextDouble() < 2)
             {
-                cmd.InsertComponent(new Component3 { Value1 = 1f, Value2 = 1f, Value3 = 1f }, e);
+                cmd.InsertComponent(e, new Component3 { Value1 = 1f, Value2 = 1f, Value3 = 1f });
             }
         }
         
