@@ -1,40 +1,34 @@
 # TECS
-TECS is a performant ECS(Entity-Component-System) for C# created for education purposes, mainly for me.
+**TECS** is a high-performance, data-oriented Entity-Component-System (ECS) for C#. Built from the ground up to leverage modern .NET features, it focuses on minimal memory allocations, cache-locality, and a clean, expressive API.
 
-It uses a SparseSet implementation with plans of adding Archetypes to allow for more flexible programs.
-
-**Note:** This project is a learning sandbox and is not currently meant for serious production use. I am building this to explore high-performance C# concepts, and I implement features that I find interesting or architecturally important rather than trying to build a fully-fledged commercial engine.
+It utilizes a Sparse Set architecture to guarantee $O(1)$ component access while keeping data tightly packed for fast, cache-friendly iteration loops.
 
 ## Prerequisites
 - .NET 8.0 or higher (Tested on .NET 10.0)
 
-## Features
-- Performant
-- Minimal allocations
-- Simple API
+## Key Features
+- **Zero-Allocation Queries:** Iterate through millions of entities without triggering the Garbage Collector.
+- **Modern C#:** Takes full advantage of .NET 8+ features like `ref structs` and advanced pattern matching.
+- **Expressive API:** Easy-to-read querying with built-in mutation tracking (`.Read` and `.Write`), and advanced filtering (`With<T>`, `Without<T>`).
 
 ## Plans
-- A guide for how to create an Entity-Component-System, like Skypjack made for [EnTT](https://skypjack.github.io/2019-02-14-ecs-baf-part-1/) but more in depth.
+- Archetype support
 - Source generation
-- Event system
 - Multi-threading
 
 ## Limitations
-**These are limitations that exist right now! They are planned to change in the future.**
-
-- **Max amount of entities** As of now, you must define the maximum amount of entities the ECS can use upon initialization (e.g., `ECS ecs = new(100_000)`). The default is 1,000. This provides better upfront performance and zero allocations at the cost of pre-allocated memory.
-  
 - **No read-only query constraints**
-  Due to C# generic limitations, all components in a `Query` are passed as `ref`. There is currently no built-in way to restrict a system to strictly read-only (`in`) access for specific components.
+  Due to C# generic limitations, all components in a `Query` are passed as `ref`. There is currently no built-in way to restrict a system to strictly read-only (`in`) access for specific components
 
-- **No event messaging**
-  There is no event-queue you can use to tell systems that something happened. For example, you cannot currently broadcast that two objects collided. Ideally, you want a way to decouple collision-detection from collision-handling, which will require an event system.
+- **Component Query Limit**
+  The API currently supports querying up to 3 components simultaneously. While needing more than 3 often implies a system is doing too much and should be rethought, options to query 4+ components will be added.
 
-- **Component limit per query (`Query<T,E,K>()`)**
-  You can currently only query up to 3 components at the same time. While needing more than 3 often implies a system is doing too much and should be rethought, options to query 4+ components will be added soon.
+- **Reference Semantics**
+Due to C# generic constraints, components are passed by ref. The .Read and .Write API wrappers are implemented to explicitly show intent and track mutations.
+
 
 ## Installation
-There is no NuGet package for now but it might get added in the future. 
+Currently, TECS is available as source code. A NuGet package is planned for the future. 
 
 To use TECS in your project:
 1. Clone or download this repository.
@@ -48,73 +42,65 @@ To use TECS in your project:
 ```csharp
 using TECS;
 using TECS.Commands;
+// --- Components ---
+public record struct Position(float X, float Y);
+public record struct Velocity(float Dx, float Dy);
 
-struct Position { public float X, Y; }
-struct Velocity { public float X, Y; }
-struct Freeze { }
+// Tag-components with no data for filtering
+public record struct PlayerTag();
+public record struct Frozen();
 
-// --- Initialization ---
-var ecs = new ECS();
 
-var entity1 = ecs.CreateEntity();
-ecs.InsertComponent(entity1, new Position { X = 0, Y = 0 });
-ecs.InsertComponent(entity1, new Velocity { X = 0, Y = 0 });
+// --- Initialization & Entities ---
+ECS ecs = new ECS();
 
-var entity2 = ecs.CreateEntity();
-ecs.InsertComponent(entity2, new Position { X = 0, Y = 0 });
+Entity entity1 = ecs.CreateEntity();
+ecs.InsertComponent(entity1, new Position(0, 0));
+ecs.InsertComponent(entity1, new Velocity(10, 5));
+
+// Chaining CreateEntity.With() lets you insert components easier. You can then save Entity in a variable
+Entity entity2 = ecs.CreateEntity().With(new Position(0, 0))
+.With(new Freeze());
 
 // --- Querying ---
-// You can use it like this:
-ecs.Query<Position>()
-   .ForEach((ref Position p) => {
-       p.X += 1;
-   });
-
-ecs.Query<Position, Velocity>()
-   .ForEach((ref Position p, ref Velocity v) => {
-       p.X += v.X;
-       p.Y += v.Y;
-   });
-
-// You can filter in case you want entities that don't have Velocity:
-ecs.Query<Position>()
-   .Without<Velocity>()
-   .ForEach((ref Position p) => {
-       p.X += 1;
-   });
-
-// You can filter in case you want entities that have Velocity, but don't need to use the component:
-ecs.Query<Position>()
-   .With<Velocity>()
-   .ForEach((ref Position p) => {
-       p.X += 1;
-   });
+// You can iterate over components using deconstruction.
+// Use .Read for read-only access, and .Write to mutate (which tracks changes automatically).
+foreach (var (pos, vel) in ecs.Query<Position, Velocity>()) 
+{
+    pos.Write.X += vel.Read.Dx;
+    pos.Write.Y += vel.Read.Dy;
+}
 
 // --- Advanced Filtering (With / Without) ---
 // You can filter entities based on components they MUST or MUST NOT have, 
-// without actually fetching that component's data into your loop.
-//
-// For example: Move entities that have Velocity, as long as they aren't Frozen!
-ecs.Query<Position>()
-   .With<Velocity>()
-   .Without<Freeze>()
-   .ForEach((ref Position p) => {
-       p.X += 1;
-   });
+// For example: Move entities that have a Position and Velocity, as long as they aren't Frozen but are a Player!
+foreach (var (pos, vel) in ecs.Query<Position, Velocity>().Without<Freeze>().With<PlayerTag>()) 
+{
+    pos.Write.X += vel.Read.Dx;
+    pos.Write.Y += vel.Read.Dy;
+}
 
 // --- Systems ---
-class MoveSystem : ISystem {
-    public void Execute(ECS ecs, ref CommandBuffer cmd) {
-        ecs.Query<Position>()
-           .ForEach((ref Position p) => {
-               p.X += 1;
-           });
+class MoveSystem : ISystem 
+{
+    public void Run(IEngine ecs, CommandBuffer cmd) 
+    {
+        foreach (var (pos, vel) in ecs.Query<Position, Velocity>())
+        {
+            pos.Write.X += vel.Read.Dx;
+            pos.Write.Y += vel.Read.Dy;
+        }
     }
 }
 
-// Running the system
-ecs.AddSystem(new MoveSystem());
-ecs.Run();
+// --- Application Loop ---
+// You can use the App builder to easily wire up your systems and run the game loop automatically!
+
+App app = new App()
+    .AddSystem<MoveSystem>();
+    
+app.RunLoop();
+
 ```
 
 ## License

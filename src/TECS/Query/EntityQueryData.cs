@@ -4,7 +4,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
-namespace TECS.Query;
+namespace TECS.Queries;
 public ref struct EntityQueryData<Comp1,Comp2,Comp3>
 {
     public bool HasData;

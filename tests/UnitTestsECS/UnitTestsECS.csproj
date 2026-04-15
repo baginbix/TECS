@@ -5,10 +5,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../..\sandbox\sandbox.csproj" />
+    <ProjectReference Include="../../src/TECS/TECS.csproj" />
   </ItemGroup>
 
   <ItemGroup>

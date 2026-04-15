@@ -11,41 +11,19 @@ using TECS.Commands;
 // This attribute tells BDN to track every single byte allocated
 [MemoryDiagnoser] 
 [DisassemblyDiagnoser(printSource: true, maxDepth: 2)]// Views the generated assembly code for the benchmarked methods.
+/*
+[HardwareCounters(
+    BenchmarkDotNet.Diagnosers.HardwareCounter.CacheMisses, 
+    BenchmarkDotNet.Diagnosers.HardwareCounter.BranchMispredictions, 
+    BenchmarkDotNet.Diagnosers.HardwareCounter.BranchInstructions)]
+*/
 public class EcsBenchmarks
+
 {
     public struct Position { public float X; public float Y; }
     public struct Velocity { public float Dx; public float Dy; }
 
     public record struct Component3 (float Value1,float Value2, float Value3);
-
-
-    public struct MoveSystemThreeComponents : IQueryAction<Position, Velocity, Component3>
-    {
-        public void Execute(ref Position p, ref Velocity v, ref Component3 c)
-        {
-            p.X += v.Dx * c.Value1;
-            p.Y += v.Dy * c.Value2;
-            p.X += v.Dx * c.Value3;
-        }
-    }
-
-    public struct MoveSystemTwoComponents : IQueryAction<Position, Velocity>
-    {
-        public void Execute(ref Position p, ref Velocity v)
-        {
-            p.X += v.Dx;
-            p.Y += v.Dy;
-        }
-    }
-
-    public struct MoveSystemOneComponent : IQueryAction<Position>
-    {
-        public void Execute(ref Position p)
-        {
-            p.X += 1;
-            p.Y += 1;
-        }
-    }
 
     private ECS ecs;
     private CommandBuffer cmd;
@@ -60,7 +38,7 @@ public class EcsBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        ecs = new ECS(EntityCount);
+        ecs = new ECS();
         cmd = new CommandBuffer();
 
         for (int i = 0; i < EntityCount; i++)
@@ -72,14 +50,14 @@ public class EcsBenchmarks
             Random rand = new Random();
             if(rand.NextDouble() < 2)
             {
-                cmd.InsertComponent(new Component3 { Value1 = 1f, Value2 = 1f, Value3 = 1f }, e);
+                cmd.InsertComponent(e, new Component3 { Value1 = 1f, Value2 = 1f, Value3 = 1f });
             }
         }
         
         cmd.Flush(ecs);
     }
 
-    [Benchmark]
+    //[Benchmark]
     public void IterateQueryLambdaTwoComponents()
     {
         var moveQuery = ecs.Query<Position, Velocity>();
@@ -90,7 +68,7 @@ public class EcsBenchmarks
         });
     }
 
-    [Benchmark]
+    //[Benchmark]
     public void IterateQueryLambdaOneComponent()
     {
         var moveQuery = ecs.Query<Position>();
@@ -101,7 +79,7 @@ public class EcsBenchmarks
         });
     }
 
-        [Benchmark]
+    //[Benchmark]
     public void IterateQueryLambdaTwoComponentsWithStruct()
     {
         var moveQuery = ecs.Query<Position, Velocity>();
@@ -112,7 +90,7 @@ public class EcsBenchmarks
         });
     }
 
-    [Benchmark]
+    //[Benchmark]
     public void IterateQueryLambdaThreeComponentsWithStruct()
     {
         var moveQuery = ecs.Query<Position, Velocity, Component3>();
@@ -124,20 +102,8 @@ public class EcsBenchmarks
         });
     }
 
-    [Benchmark]
-    public void IterateIActionOneComponent()
-    {
-        var moveQuery = ecs.Query<Position>();
-        moveQuery.ForEach(new MoveSystemOneComponent());
-    }
+    
 
-    [Benchmark]
-    public void IterateIActionThreeComponents()
-    {
-        var moveQuery = ecs.Query<Position, Velocity, Component3>();
-        var action = new MoveSystemThreeComponents();
-        moveQuery.ForEach(ref action);
-    }
 
 
     [Benchmark]
@@ -146,8 +112,8 @@ public class EcsBenchmarks
         var moveQuery = ecs.Query<Position>();  
         foreach(var pos in moveQuery)
         {
-            pos.RW.X += 1;
-            pos.RW.Y += 1;
+            pos.Write.X += 1;
+            pos.Write.Y += 1;
         }
     }
     [Benchmark]
@@ -156,8 +122,8 @@ public class EcsBenchmarks
         var moveQuery = ecs.Query<Position, Velocity>();  
         foreach(var item in moveQuery)
         {
-            item.RW<Position>().X += item.RO<Velocity>().Dx;
-            item.RW<Position>().Y += item.RO<Velocity>().Dy;
+            item.Write<Position>().X += item.Read<Velocity>().Dx;
+            item.Write<Position>().Y += item.Read<Velocity>().Dy;
         }
     }
 
@@ -167,21 +133,25 @@ public class EcsBenchmarks
         var moveQuery = ecs.Query<Position, Velocity, Component3>();  
         foreach(var item in moveQuery)
         {
-            item.RW<Position>().X += item.RO<Velocity>().Dx * item.RO<Component3>().Value1;
-            item.RW<Position>().Y += item.RO<Velocity>().Dy * item.RO<Component3>().Value2;
-            item.RW<Position>().X += item.RO<Velocity>().Dx * item.RO<Component3>().Value3;
+            item.Write<Position>().X += item.Read<Velocity>().Dx * item.Read<Component3>().Value1;
+            item.Write<Position>().Y += item.Read<Velocity>().Dy * item.Read<Component3>().Value2;
+            item.Write<Position>().X += item.Read<Velocity>().Dx * item.Read<Component3>().Value3;
         }
     }
 
     [Benchmark]
-    public void IterateQueryQueryAction()
+    public void InteraterEnumeratorThreeComponentsDeconstrution()
     {
-        var moveQuery = ecs.Query<Position, Velocity>();
-        var action = new MoveSystemTwoComponents();
-        moveQuery.ForEach(ref action);
+        var moveQuery = ecs.Query<Position, Velocity, Component3>();  
+        foreach((var pos, var vel, var comp3) in moveQuery)
+        {
+            pos.Write.X += vel.Read.Dx * comp3.Read.Value1;
+            pos.Write.Y += vel.Read.Dy * comp3.Read.Value2;
+            pos.Write.X += vel.Read.Dx * comp3.Read.Value3;
+        }
     }
 
-    [Benchmark]
+    //[Benchmark]
     public void IterateSparseSetAVX()
     {
         var positionSet = CollectionsMarshal.AsSpan( ecs.GetComponentList<Position>());
