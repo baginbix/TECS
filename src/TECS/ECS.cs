@@ -15,6 +15,7 @@ namespace TECS
         EventReader<TEvent> ReadEvents<TEvent>() where TEvent : struct;
         OptionRef<T> QueryComponent<T>(Entity entity) where T: struct;
         Option<T> QueryReadonlyComponent<T>(Entity entity) where T : struct;
+        T GetResource<T>() where T:IResource;
     }
 
     public class ECS : IEngine
@@ -85,9 +86,17 @@ namespace TECS
             resources.Add(typeof(T), new T());
         }
 
-        public T GetResource<T>()
+        public T GetResource<T>() where T :IResource
         {
+            #if DEBUG
+            if(resources.TryGetValue(typeof(T),  out var value))
+            {
+                return (T)value;
+            }
+            throw new InvalidOperationException($"The resource of type {typeof(T).Name} has not been added to the ECS!");
+            # else
             return (T)resources[typeof(T)];
+            #endif
         }
 
         public void InsertComponent<T>(Entity entityId, T component) where T : struct

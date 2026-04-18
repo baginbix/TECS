@@ -53,6 +53,52 @@ public ref struct Query<T> where T : struct
         this.sparseSet = sparseSet;
     }
 
+    public ref T Single()
+    {
+        var enumerator = GetEnumerator();
+        bool hasFirst = enumerator.MoveNext();
+        #if DEBUG
+        if (!hasFirst)
+        {
+            throw new InvalidCastException($"No {typeof(T).Name} has been added.");
+        }
+        #endif
+
+        ref T firstResult = ref enumerator.Current.Write;
+
+
+        #if DEBUG
+        if (enumerator.MoveNext())
+        {
+            throw new InvalidOperationException($"More than one entity with queried component {typeof(T).Name} has been found!");
+        }
+        #endif
+        return ref firstResult;
+    }
+
+    public readonly ref T SingleReadonly()
+    {
+        var enumerator = GetEnumerator();
+        bool hasFirst = enumerator.MoveNext();
+        #if DEBUG
+        if (!hasFirst)
+        {
+            throw new InvalidCastException($"No {typeof(T).Name} has been added.");
+        }
+        #endif
+
+        ref readonly T firstResult = ref enumerator.Current.Read;
+
+
+        #if DEBUG
+        if (enumerator.MoveNext())
+        {
+            throw new InvalidOperationException($"More than one entity with queried component {typeof(T).Name} has been found!");
+        }
+        #endif
+        return ref firstResult;
+    }
+
     public Query<T> With<Component>()
     where Component: struct
     {
@@ -104,9 +150,12 @@ public ref struct Query<T> where T : struct
         }
     }
 
-    public unsafe QueryEnumerator GetEnumerator()
+    public unsafe readonly QueryEnumerator GetEnumerator()
     {
-        QueryFilter* filter = (QueryFilter*)Unsafe.AsPointer(ref queryFilter);
+        // strip queryFilter of the readonly protection
+        ref QueryFilter mutableFilter = ref Unsafe.AsRef(in queryFilter);
+        //Now it can be passed into QueryEnumerator without problem
+        QueryFilter* filter = (QueryFilter*)Unsafe.AsPointer(ref mutableFilter);
         return new QueryEnumerator(sparseSet, entityMasks, filter, lastSystemTick, lastGlobalTick, changed);
     }
 
