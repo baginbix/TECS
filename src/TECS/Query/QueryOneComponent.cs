@@ -42,6 +42,8 @@ public ref struct Query<T> where T : struct
     readonly ulong lastGlobalTick;
     SparseSet<T> sparseSet;
     bool changed = false;
+    bool hasExclude = false;
+    bool hasInclude = false;
     public Query(SparseSet<T> sparseSet, Span<Bitset> entityMasks, ulong lastSystemTick, ulong lastGlobalTick)
     {
         this.dense = CollectionsMarshal.AsSpan(sparseSet.GetDense());
@@ -76,7 +78,7 @@ public ref struct Query<T> where T : struct
         return ref firstResult;
     }
 
-    public readonly ref T SingleReadonly()
+    public ref readonly T SingleReadonly()
     {
         var enumerator = GetEnumerator();
         bool hasFirst = enumerator.MoveNext();
@@ -103,12 +105,14 @@ public ref struct Query<T> where T : struct
     where Component: struct
     {
         queryFilter.With<Component>();
+        hasInclude = true;
         return this;
     }
     public Query<T> Without<Component>()
     where Component: struct
     {
         queryFilter.Without<Component>();
+        hasExclude = true;
         return this;
     }
 
@@ -120,6 +124,35 @@ public ref struct Query<T> where T : struct
 
     public void ForEach(QueryFunc<T> func)
     {
+        if (changed)
+        {
+            ref ulong ticks =  ref MemoryMarshal.GetReference(sparseSet.GetLastTicks());
+            if(!hasExclude && !hasInclude)
+            {
+                for(int i = 0; i < dense.Length; i++)
+                {
+                    if(Unsafe.Add(ref ticks, i) <= lastSystemTick) continue; // Component hasn't been changed since the last time the system ran
+                    func(ref dense[i]);
+                }
+                return;
+            }
+            for(int i = 0; i < dense.Length; i++)
+            {
+                ref Bitset entityMask = ref entityMasks[entities[i].Id];
+                if(entityMask.Intersects(ref queryFilter.exludeMask)) continue;
+                if(!entityMask.ContainsAll(ref queryFilter.includeMask)) continue;
+                if(Unsafe.Add(ref ticks, i) <= lastSystemTick) continue; // Component hasn't been changed since the last time the system ran
+                func(ref dense[i]);
+            }
+        }
+        if(!hasExclude && !hasInclude)
+        {
+            for(int i = 0; i < dense.Length; i++)
+            {
+                func(ref dense[i]);
+            }
+            return;
+        }
         for(int i = 0; i < dense.Length; i++)
         {
             ref Bitset entityMask = ref entityMasks[entities[i].Id];
@@ -131,6 +164,13 @@ public ref struct Query<T> where T : struct
     
     public void ForEach(QueryFuncEntity<T> func)
     {
+        if(queryFilter.exludeMask.IsEmpty() && queryFilter.includeMask.IsEmpty())
+        {
+            for(int i = 0; i < dense.Length; i++)
+            {
+                func(entities[i],ref dense[i]);
+            }
+        }
         for(int i = 0; i < dense.Length; i++)
         {
             ref Bitset entityMask = ref entityMasks[entities[i].Id];
@@ -141,6 +181,13 @@ public ref struct Query<T> where T : struct
     }
 
     public void ForEach<IAction>(IAction action) where IAction : struct, IQueryAction<T>{
+        if(queryFilter.exludeMask.IsEmpty() && queryFilter.includeMask.IsEmpty())
+        {
+            for(int i = 0; i < dense.Length; i++)
+            {
+                action.Execute(ref dense[i]);
+            }
+        }
         for(int i = 0; i < dense.Length; i++)
         {
             ref Bitset entityMask = ref entityMasks[entities[i].Id];
@@ -202,6 +249,19 @@ public ref struct Query<T> where T : struct
 
         public bool MoveNext()
         {
+            if(!hasExclude && !hasInlcude)
+            {
+                if (changed)
+                {
+                    while(++index < denseLength)
+                    {
+                        if(Unsafe.Add(ref ticks, index) <= lastSystemTick) continue; // Component hasn't been changed since the last time the system ran
+                        return true;
+                    }
+                    return false;
+                }
+                return ++index < denseLength;
+            }
             if (changed)
             {
                 // If the query is filtered to only include changed components, we can skip entities until we find one that has been changed since the last time the system ran

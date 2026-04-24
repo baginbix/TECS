@@ -57,6 +57,7 @@ public class EcsBenchmarks
         cmd.Flush(ecs);
     }
 
+/*
     //[Benchmark]
     public void IterateQueryLambdaTwoComponents()
     {
@@ -67,8 +68,8 @@ public class EcsBenchmarks
             p.Y += v.Dy;
         });
     }
-
-    //[Benchmark]
+*/
+    [Benchmark]
     public void IterateQueryLambdaOneComponent()
     {
         var moveQuery = ecs.Query<Position>();
@@ -79,6 +80,7 @@ public class EcsBenchmarks
         });
     }
 
+/*
     //[Benchmark]
     public void IterateQueryLambdaTwoComponentsWithStruct()
     {
@@ -89,7 +91,7 @@ public class EcsBenchmarks
             p.Y += v.Dy;
         });
     }
-
+*/
     //[Benchmark]
     public void IterateQueryLambdaThreeComponentsWithStruct()
     {

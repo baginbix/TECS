@@ -207,7 +207,7 @@ namespace TECS
         where T : struct
         where E : struct
         {
-            return new Query<T, E>(GetOrCreateSet<T>(), GetOrCreateSet<E>(), entityMasks,currentSystemLastTick, GlobalTick);
+            return new Query<T, E>(GetOrCreateSet<T>(), GetOrCreateSet<E>(),entityMasks,currentSystemLastTick, GlobalTick);
         }
 
         public Query<T, E, K> Query<T, E, K>()
