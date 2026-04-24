@@ -1,10 +1,11 @@
 
 
+using System.ComponentModel.Design;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using TECS;
 namespace TECS.Queries;
-
+public delegate void QueryFuncItem<T>(ref QueryItem<T> comp) where T: struct;
 public ref struct QueryItem<T> where T: struct
 {
     private Entity entity;
@@ -34,8 +35,8 @@ public ref struct QueryItem<T> where T: struct
 }
 public ref struct Query<T> where T : struct
 {
-    readonly Span<T> dense;
-    readonly Span<Entity> entities;
+    ref T dense;
+    ref Entity entities;
     readonly Span<Bitset> entityMasks;
     QueryFilter queryFilter;
     readonly ulong lastSystemTick;
@@ -44,10 +45,12 @@ public ref struct Query<T> where T : struct
     bool changed = false;
     bool hasExclude = false;
     bool hasInclude = false;
+    int denseLength;
     public Query(SparseSet<T> sparseSet, Span<Bitset> entityMasks, ulong lastSystemTick, ulong lastGlobalTick)
     {
-        this.dense = CollectionsMarshal.AsSpan(sparseSet.GetDense());
-        entities = CollectionsMarshal.AsSpan(sparseSet.GetEntities());
+        denseLength = sparseSet.GetDense().Count;
+        this.dense = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(sparseSet.GetDense()));
+        entities = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(sparseSet.GetEntities()));
         this.entityMasks = entityMasks;
         queryFilter = new QueryFilter();
         this.lastSystemTick = lastSystemTick;
@@ -122,46 +125,51 @@ public ref struct Query<T> where T : struct
         return this;
     }
 
-    public void ForEach(QueryFunc<T> func)
+    public void ForEach(QueryFuncItem<T> func)
     {
+        ref ulong ticks =  ref MemoryMarshal.GetReference(sparseSet.GetLastTicks());
         if (changed)
         {
-            ref ulong ticks =  ref MemoryMarshal.GetReference(sparseSet.GetLastTicks());
             if(!hasExclude && !hasInclude)
             {
-                for(int i = 0; i < dense.Length; i++)
+                for(int i = 0; i < denseLength; i++)
                 {
                     if(Unsafe.Add(ref ticks, i) <= lastSystemTick) continue; // Component hasn't been changed since the last time the system ran
-                    func(ref dense[i]);
+                    QueryItem<T> queryItem = new(Unsafe.Add(ref entities,i), ref Unsafe.Add(ref dense, i), ref Unsafe.Add(ref ticks, i), lastSystemTick);
+                    func(ref queryItem);
                 }
                 return;
             }
-            for(int i = 0; i < dense.Length; i++)
+            for(int i = 0; i < denseLength; i++)
             {
-                ref Bitset entityMask = ref entityMasks[entities[i].Id];
+                ref Bitset entityMask = ref entityMasks[Unsafe.Add(ref entities,i).Id];
                 if(entityMask.Intersects(ref queryFilter.exludeMask)) continue;
                 if(!entityMask.ContainsAll(ref queryFilter.includeMask)) continue;
                 if(Unsafe.Add(ref ticks, i) <= lastSystemTick) continue; // Component hasn't been changed since the last time the system ran
-                func(ref dense[i]);
+                QueryItem<T> queryItem = new(Unsafe.Add(ref entities,i), ref Unsafe.Add(ref dense, i), ref Unsafe.Add(ref ticks, i), lastSystemTick);
+                func(ref queryItem);
             }
         }
         if(!hasExclude && !hasInclude)
         {
-            for(int i = 0; i < dense.Length; i++)
+            for(int i = 0; i < denseLength; i++)
             {
-                func(ref dense[i]);
+                QueryItem<T> queryItem = new(Unsafe.Add(ref entities,i), ref Unsafe.Add(ref dense, i), ref Unsafe.Add(ref ticks, i), lastSystemTick);
+                func(ref queryItem);
             }
             return;
         }
-        for(int i = 0; i < dense.Length; i++)
+        for(int i = 0; i < denseLength; i++)
         {
-            ref Bitset entityMask = ref entityMasks[entities[i].Id];
+            ref Bitset entityMask = ref entityMasks[Unsafe.Add(ref entities,i).Id];
             if(entityMask.Intersects(ref queryFilter.exludeMask)) continue;
             if(!entityMask.ContainsAll(ref queryFilter.includeMask)) continue;
-            func(ref dense[i]);
+            QueryItem<T> queryItem = new(Unsafe.Add(ref entities,i), ref Unsafe.Add(ref dense, i), ref Unsafe.Add(ref ticks, i), lastSystemTick);
+            func(ref queryItem);
         }
     }
     
+    /*
     public void ForEach(QueryFuncEntity<T> func)
     {
         if(queryFilter.exludeMask.IsEmpty() && queryFilter.includeMask.IsEmpty())
@@ -196,7 +204,7 @@ public ref struct Query<T> where T : struct
             action.Execute(ref dense[i]);
         }
     }
-
+*/
     public unsafe readonly QueryEnumerator GetEnumerator()
     {
         // strip queryFilter of the readonly protection
@@ -302,8 +310,10 @@ public ref struct Query<T> where T : struct
         }
     }
 
+    /*
     public Span<T> GetPacked()
     {
         return dense;
     }
+    */
 }

@@ -11,6 +11,7 @@ using TECS.Commands;
 // This attribute tells BDN to track every single byte allocated
 [MemoryDiagnoser] 
 [DisassemblyDiagnoser(printSource: true, maxDepth: 2)]// Views the generated assembly code for the benchmarked methods.
+
 /*
 [HardwareCounters(
     BenchmarkDotNet.Diagnosers.HardwareCounter.CacheMisses, 
@@ -73,10 +74,10 @@ public class EcsBenchmarks
     public void IterateQueryLambdaOneComponent()
     {
         var moveQuery = ecs.Query<Position>();
-        moveQuery.ForEach((ref Position p ) =>
+        moveQuery.ForEach((ref p ) =>
         {
-            p.X += 1;
-            p.Y += 1;
+            p.Write.X += 1;
+            p.Write.Y += 1;
         });
     }
 
