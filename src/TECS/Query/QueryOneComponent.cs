@@ -299,7 +299,9 @@ public ref struct Query<T> where T : struct
             return false;
         }
 
+        
         public QueryItem<T> Current{
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get{
                 return new QueryItem<T>(
                     Unsafe.Add(ref entities, index),
@@ -310,10 +312,10 @@ public ref struct Query<T> where T : struct
         }
     }
 
-    /*
+    
     public Span<T> GetPacked()
     {
-        return dense;
+        return new Span<T>(ref dense);
     }
-    */
+    
 }
