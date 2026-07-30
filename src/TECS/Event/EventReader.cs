@@ -1,6 +1,6 @@
 using System.Data.Common;
 
-namespace src.Event;
+namespace TECS.Event;
 
 interface IEventReader{}
 public class EventReader<T>(EventManager manager) : IEventReader where T: struct

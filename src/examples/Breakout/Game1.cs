@@ -17,6 +17,7 @@ public class Game1 : Game
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
         app = new App();
+        app.AddPlugin<BreakoutPlugin>();
     }
 
     protected override void Initialize()
@@ -34,6 +35,11 @@ public class Game1 : Game
         Assets assets = new Assets();
         assets.RegisterTexture("pixel",pixel);
         app.AddResource(assets);
+        app.AddResource(new Graphics
+        {
+            spriteBatch = _spriteBatch,
+            device = GraphicsDevice
+        });
 
         // TODO: use this.Content to load your game content here
     }
@@ -45,13 +51,13 @@ public class Game1 : Game
             Exit();
 
         // TODO: Add your update logic here
+        app.Run();
 
         base.Update(gameTime);
     }
 
     protected override void Draw(GameTime gameTime)
     {
-        GraphicsDevice.Clear(Color.CornflowerBlue);
 
         // TODO: Add your drawing code here
 

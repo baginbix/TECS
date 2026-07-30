@@ -6,7 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="..\src\**\*.cs" />
-  </ItemGroup>
+<ItemGroup>
+  <!-- This is the correct way to link your engine to your sandbox -->
+  <ProjectReference Include="..\src\TECS\TECS.csproj" />
+</ItemGroup>
 </Project>

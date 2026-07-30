@@ -5,15 +5,22 @@
     <Platform Name="x86" />
   </Configurations>
     <Project Path="sandbox/sandbox.csproj" />
-
-  <Folder Name="/TECS/">
+  <Folder Name="/src/" />
+  <Folder Name="/src/examples/">
+    <Project Path="src/examples/Basics/Basics.csproj" />
+    <Project Path="src/examples/Breakout/Breakout.csproj" />
+  </Folder>
+  <Folder Name="/src/TECS/">
     <Project Path="src/TECS/TECS.csproj" />
   </Folder>
-  <Folder Name="/Examples/">
-    <Project Path="src/examples/Breakout/Breakout.csproj" />
-    <Project Path="src/examples/Event/Event.csproj" />
-    <Project Path="src/examples/Basics/Basics.csproj" />
+
+  <Folder Name="/src/Generator/">
+    <Project Path="src/Generator/Generator.csproj" />
   </Folder>
+
+
+  <Folder Name="/TECS/" />
+  <Folder Name="/Examples/" />
   <Folder Name="/Tests/">
     <Project Path="tests/Performance/Performance.csproj" />
     <Project Path="tests/UnitTestsECS/UnitTestsECS.csproj" />

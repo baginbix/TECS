@@ -2,22 +2,50 @@
 using System.Collections.Generic;
 using Xunit;
 using TECS;
-using TECS.Commands;
+using TECS.Query;
 
 namespace TECS.Tests
 {
+    // 1. Components & Resources
     public struct Position { public float X, Y; }
     public struct Velocity { public float X, Y; }
     public struct Health { public int Value; }
     public class TimeResource : IResource { public float DeltaTime; }
 
-    class MoveSystem : ISystem
+    // 2. Define Queries
+    [Query]
+    public ref struct MoveQuery
     {
-        public void Run(IEngine ecs, CommandBuffer cmd)
+        public ref Position Pos;
+    }
+
+    [Query]
+    public ref struct DestroyTestQuery
+    {
+        public ref Position Pos;
+        public ref Velocity Vel;
+    }
+
+    // 3. Define Static Systems
+    public static class TestSystems
+    {
+        public static int ExecutionCount = 0;
+
+        [System]
+        public static void MoveSystem(Query<MoveQuery> query)
         {
-            foreach (var item in ecs.Query<Position>())
+            foreach (var item in query)
             {
                 // You can mutate items directly here now!
+            }
+        }
+
+        [System]
+        public static void CountEntitiesSystem(Query<DestroyTestQuery> query)
+        {
+            foreach (var item in query)
+            {
+                ExecutionCount++;
             }
         }
     }
@@ -55,33 +83,33 @@ namespace TECS.Tests
         [Fact]
         public void DestroyEntity_ShouldRemoveEntityFromQueries()
         {
-            var ecs = new ECS();
-            Entity e1 = ecs.CreateEntity();
-            Entity e2 = ecs.CreateEntity();
-            Entity e3 = ecs.CreateEntity();
+            var app = new App();
+            TestSystems.ExecutionCount = 0;
 
-            ecs.InsertComponent<Position>(e1, new Position());
-            ecs.InsertComponent<Velocity>(e1, new Velocity());
+            // Using internal app.ecs access
+            Entity e1 = app.ecs.CreateEntity();
+            Entity e2 = app.ecs.CreateEntity();
+            Entity e3 = app.ecs.CreateEntity();
 
-            ecs.InsertComponent<Position>(e2, new Position());
-            ecs.InsertComponent<Velocity>(e2, new Velocity());
+            app.ecs.InsertComponent<Position>(e1, new Position());
+            app.ecs.InsertComponent<Velocity>(e1, new Velocity());
 
-            ecs.InsertComponent<Position>(e3, new Position());
-            ecs.InsertComponent<Velocity>(e3, new Velocity());
+            app.ecs.InsertComponent<Position>(e2, new Position());
+            app.ecs.InsertComponent<Velocity>(e2, new Velocity());
+
+            app.ecs.InsertComponent<Position>(e3, new Position());
+            app.ecs.InsertComponent<Velocity>(e3, new Velocity());
 
             // Act
-            ecs.DestroyEntity(e2); // Destroy the middle one
+            app.ecs.DestroyEntity(e2); // Destroy the middle one
 
             // Assert
-            int loopCount = 0;
-            
-            // Replaced ForEach with the blazing fast Enumerator!
-            foreach (var item in ecs.Query<Position, Velocity>())
-            {
-                loopCount++;
-            }
+            // Register and run the system once
+            app.AddSystem(TestSystems.CountEntitiesSystem);
+            app.Run();
 
-            Assert.Equal(2, loopCount);
+            // Should only process e1 and e3
+            Assert.Equal(2, TestSystems.ExecutionCount);
         }
     }
 }

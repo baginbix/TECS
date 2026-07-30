@@ -16,9 +16,9 @@ public class StateManager<TState> :IStateManager,IResource where TState: struct,
     private TState? nextState;
     private bool isTransitioning;
 
-    private Dictionary<TState, List<ISystem>> onEnter = new();
-    private Dictionary<TState, List<ISystem>> onUpdate = new();
-    private Dictionary<TState, List<ISystem>> onExit = new();
+    private Dictionary<TState, List<SystemBinding>> onEnter = new();
+    private Dictionary<TState, List<SystemBinding>> onUpdate = new();
+    private Dictionary<TState, List<SystemBinding>> onExit = new();
     
     public StateManager(TState initialState)
     {
@@ -46,9 +46,10 @@ public class StateManager<TState> :IStateManager,IResource where TState: struct,
         isTransitioning = true;
     }
     
-    public void AddEnterSystem(TState state, ISystem system) => onEnter[state].Add(system);
-    public void AddUpdateSystem(TState state, ISystem system) => onUpdate[state].Add(system);
-    public void AddExitSystem(TState state, ISystem system) => onExit[state].Add(system);
+    //TODO::Fix StateManager it shouldn't need an object
+    public void AddEnterSystem(TState state, SystemBinding system) => onEnter[state].Add(system);
+    public void AddUpdateSystem(TState state, SystemBinding system) => onUpdate[state].Add(system);
+    public void AddExitSystem(TState state, SystemBinding system) => onExit[state].Add(system);
 
     public void ProcessTransitions(ECS ecs, ref CommandBuffer cmd)
     {

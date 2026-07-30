@@ -1,24 +1,60 @@
 using System.Diagnostics;
+using System.Security.Cryptography.X509Certificates;
 using Microsoft.VisualBasic.CompilerServices;
+using TECS.Commands;
 using TECS.Plugins;
+using TECS.Query;
+using TECS.Runner;
+using TECS.Scheduler;
 using TECS.Systems;
 using TECS.Time;
 
 namespace TECS;
 
-public class App
+public delegate void SystemDelegate<T>(Query<T> query) where T : allows ref struct;
+
+public abstract class SystemBinding
 {
-    private ECS ecs;
-    SystemManager systemManager;
+    public Type[] Reads { get; } = Array.Empty<Type>();
+    public Type[] Writes { get; } = Array.Empty<Type>();
+    public abstract void Run(ECS ecs, CommandBuffer cmd);
+}
+
+public partial class App
+{
+    internal ECS ecs;
+    public ECS Ecs => ecs;
+    private SystemManager systemManager;
 
     private bool run = true;
 
     private bool Initialized = false;
 
+    private IRunner _runner;
+
     public App()
     {
         ecs = new ECS();
         systemManager = new (ecs);
+    }
+
+    public App SetRunner(IRunner runner)
+    {
+        _runner = runner;
+        return this;
+    }
+
+    public App SetRunner(Action<LambdaRunner> runner) 
+    {
+        _runner = new LambdaRunner(runner);
+        _runner.SetSchedular(new StandardSchedular());
+        return this;
+    }
+    public App SetRunner(Action<LambdaRunner> runner, IScheduler scheduler) 
+    {
+        _runner = new LambdaRunner(runner);
+        _runner.SetSchedular(scheduler);
+        return this;
     }
 
     public App AddState<TState>(TState startState) where TState : struct, Enum
@@ -42,51 +78,44 @@ public class App
         return this;
     }
 
-    /// <summary>
-    /// Adds a system to a SystemPhase of your choice
-    /// </summary>
-    /// <param name="phase">The phase to put system into</param>
-    public App AddSystem<TSystem>(SystemPhase phase) where TSystem: ISystem, new()
+    public App AddSystemBinding(SystemBinding systemBinding, SystemPhase phase)
     {
-        systemManager.Add(phase, new TSystem());
+        systemManager.Add(systemBinding,phase);
         return this;
     }
-    
-    /// <summary>
-    /// Adds a system to SystemPhase.Update
-    /// </summary>
-    public App AddSystem<TSystem>() where TSystem : ISystem, new()
+
+    public App AddSystemOnEnter<TState>(TState state, SystemBinding binding) where TState : struct, Enum
     {
-        return AddSystem<TSystem>(SystemPhase.Update);
+        var stateManager = ecs.GetResource<StateManager<TState>>();
+        stateManager.AddEnterSystem(state, binding);
+        return this;
     }
-    
+
+    public App AddSystemOnUpdate<TState>(TState state, SystemBinding binding) where TState : struct, Enum
+    {
+        var stateManager = ecs.GetResource<StateManager<TState>>();
+        stateManager.AddUpdateSystem(state, binding);
+        return this;
+    }
+
+    public App AddSystemOnExit<TState>(TState state, SystemBinding binding) where TState : struct, Enum
+    {
+        var stateManager = ecs.GetResource<StateManager<TState>>();
+        stateManager.AddExitSystem(state, binding);
+        return this;
+    }
     
     public App AddResource<TResource>(TResource resource) where TResource : IResource
     {
         ecs.InsertResource(resource);
         return this;
     }
+
+
     
-    /// <summary>
-    /// Adds a system to a SystemPhase of your choice
-    /// </summary>
-    /// <param name="phase">The phase to put system into</param>
-    /// <param name="system">System to add</param>
-    public App AddSystem(SystemPhase phase, ISystem system)
-    {
-        systemManager.Add(phase, system);
-        return this;
-    }
-    
-    /// <summary>
-    /// Adds a system to SystemPhase.Update
-    /// </summary>
-    /// <param name="system">The system you want to add</param>
-    public App AddSystem(ISystem system)
-    {
-        return AddSystem(SystemPhase.Update, system);
-    }
-    
+    /*
+    This is now source generated to match this signature
+    One is generated for Enter/Update/Exit
     public App AddSystemOnEnter<TState>(TState state, ISystem system) 
         where TState : struct, Enum
     {
@@ -94,67 +123,12 @@ public class App
         stateManager.AddEnterSystem(state, system);
         return this;
     }
-    
-    public App AddSystemOnUpdate<TState>(TState state, ISystem system) 
-        where TState : struct, Enum
-    {
-        var stateManager = ecs.GetResource<StateManager<TState>>();
-        stateManager.AddUpdateSystem(state, system);
-        return this;
-    }
-    
-    public App AddSystemOnExit<TState>(TState state, ISystem system) 
-        where TState : struct, Enum
-    {
-        var stateManager = ecs.GetResource<StateManager<TState>>();
-        stateManager.AddExitSystem(state, system);
-        return this;
-    }
-    
-    
-    public App AddSystemOnEnter<TState, TSystem>(TState state) 
-        where TState : struct, Enum
-        where TSystem : ISystem, new()
-    {
-        var stateManager = ecs.GetResource<StateManager<TState>>();
-        stateManager.AddEnterSystem(state, new TSystem());
-        return this;
-    }
-    
-    public App AddSystemOnUpdate<TState, TSystem>(TState state) 
-        where TState : struct, Enum
-        where TSystem : ISystem, new()
-    {
-        var stateManager = ecs.GetResource<StateManager<TState>>();
-        stateManager.AddUpdateSystem(state, new TSystem());
-        return this;
-    }
-    
-    public App AddSystemOnExit<TState, TSystem>(TState state) 
-        where TState : struct, Enum
-        where TSystem : ISystem, new()
-    {
-        var stateManager = ecs.GetResource<StateManager<TState>>();
-        stateManager.AddExitSystem(state, new TSystem());
-        return this;
-    }
+    */
 
     public App AddResource(IResource resource) 
     {
         ecs.InsertResource(resource);
         return this;
-    }
-    public void Run()
-    {
-        if(!Initialized)
-        {
-            ecs.InsertResource<Time.Time>();
-            systemManager.OnStart();
-            Initialized = true;
-        }
-        systemManager.UpdateSystems(); 
-        ecs.Flush();
-        ecs.NextTick(); 
     }
 
     public void RunLoop()
@@ -181,10 +155,13 @@ public class App
         }
     }
 
+    public void Run()
+    {
+        _runner.Run(this);
+    }
+
     public void Stop()
     {
         run = false;
     }
-
-
 }

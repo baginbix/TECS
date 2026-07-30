@@ -2,6 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>preview</LangVersion>
         <OutputType>Library</OutputType>
         <AssemblyName>TECS</AssemblyName>
         <RootNamespace>TECS</RootNamespace>
@@ -11,6 +12,25 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+        <!-- MOVED HERE: These must be in a PropertyGroup -->
+        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+        <CompilerGeneratedFilesOutputPath>GeneratedOutputs</CompilerGeneratedFilesOutputPath>
     </PropertyGroup>
 
+    <ItemGroup>
+        <Compile Remove="GeneratedOutputs\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Generator\Generator.csproj" 
+                        OutputItemType="Analyzer" 
+                        ReferenceOutputAssembly="false" 
+                        Pack="true"
+                        PackagePath="analyzers/dotnet/cs"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="UnitTestsECS" />
+    </ItemGroup>
 </Project>
