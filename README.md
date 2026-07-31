@@ -10,21 +10,19 @@ It utilizes a Sparse Set architecture to guarantee $O(1)$ component access while
 - **Zero-Allocation Queries:** Iterate through millions of entities without triggering the Garbage Collector.
 - **Modern C#:** Takes full advantage of .NET 8+ features like `ref structs` and advanced pattern matching.
 - **Expressive API:** Easy-to-read querying with built-in mutation tracking (`.Read` and `.Write`), and advanced filtering (`With<T>`, `Without<T>`).
+- **Source generation:** Express yourself with easy to make queries and systems that utilize source generation to make the impossible possible.
+- **Multi-threading:** To get maximum performance systems can be run in parallel.
 
 ## Plans
-- Archetype support
-- Source generation
-- Multi-threading
+- Archetype support: TBA
+- Customizable pipeline
 
 ## Limitations
 - **No read-only query constraints**
   Due to C# generic limitations, all components in a `Query` are passed as `ref`. There is currently no built-in way to restrict a system to strictly read-only (`in`) access for specific components
 
-- **Component Query Limit**
-  The API currently supports querying up to 3 components simultaneously. While needing more than 3 often implies a system is doing too much and should be rethought, options to query 4+ components will be added.
-
 - **Reference Semantics**
-Due to C# generic constraints, components are passed by ref. The .Read and .Write API wrappers are implemented to explicitly show intent and track mutations.
+Due to C# generic constraints, components are passed by ref. Readonly is used to notify the system when a component will be just be read.
 
 
 ## Installation
