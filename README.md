@@ -40,64 +40,59 @@ To use TECS in your project:
 ```csharp
 using TECS;
 using TECS.Commands;
+using TECS.Query;
+
 // --- Components ---
-public record struct Position(float X, float Y);
-public record struct Velocity(float Dx, float Dy);
+// Simple structs hold your data.
+public struct Position { public float X; public float Y; }
+public struct Velocity { public float Dx; public float Dy; }
 
 // Tag-components with no data for filtering
-public record struct PlayerTag();
-public record struct Frozen();
+public struct PlayerTag { }
+public struct Frozen { }
 
-
-// --- Initialization & Entities ---
-ECS ecs = new ECS();
-
-Entity entity1 = ecs.CreateEntity();
-ecs.InsertComponent(entity1, new Position(0, 0));
-ecs.InsertComponent(entity1, new Velocity(10, 5));
-
-// Chaining CreateEntity.With() lets you insert components easier. You can then save Entity in a variable
-Entity entity2 = ecs.CreateEntity().With(new Position(0, 0))
-.With(new Freeze());
-
-// --- Querying ---
-// You can iterate over components using deconstruction.
-// Use .Read for read-only access, and .Write to mutate (which tracks changes automatically).
-foreach (var (pos, vel) in ecs.Query<Position, Velocity>()) 
+// --- Queries ---
+// Queries are now defined using source-generated ref structs!
+// Use `ref readonly` for read-access and `ref` for write-access. 
+// The engine's DAG scheduler reads these to automatically multithread your systems!
+[Query]
+public ref struct MoveQuery
 {
-    pos.Write.X += vel.Read.Dx;
-    pos.Write.Y += vel.Read.Dy;
-}
-
-// --- Advanced Filtering (With / Without) ---
-// You can filter entities based on components they MUST or MUST NOT have, 
-// For example: Move entities that have a Position and Velocity, as long as they aren't Frozen but are a Player!
-foreach (var (pos, vel) in ecs.Query<Position, Velocity>().Without<Freeze>().With<PlayerTag>()) 
-{
-    pos.Write.X += vel.Read.Dx;
-    pos.Write.Y += vel.Read.Dy;
+    public ref Position Pos;
+    public ref readonly Velocity Vel;
 }
 
 // --- Systems ---
-class MoveSystem : ISystem 
+// Systems are now just static methods tagged with [System]. 
+// The source generator handles the binding, and dependencies (like CommandBuffer or Res<T>) are injected automatically.
+public static class GameSystems 
 {
-    public void Run(IEngine ecs, CommandBuffer cmd) 
+    [System]
+    public static void MoveSystem(Query<MoveQuery> movers) 
     {
-        foreach (var (pos, vel) in ecs.Query<Position, Velocity>())
+        // Iterate through matching entities seamlessly
+        foreach (var m in movers) 
         {
-            pos.Write.X += vel.Read.Dx;
-            pos.Write.Y += vel.Read.Dy;
+            m.Pos.X += m.Vel.Dx;
+            m.Pos.Y += m.Vel.Dy;
         }
     }
 }
 
-// --- Application Loop ---
-// You can use the App builder to easily wire up your systems and run the game loop automatically!
+// --- Application Setup & Loop ---
+// The source generator automatically creates strongly-typed .AddSystem() extensions for your methods[cite: 14]!
+App app = new App();
 
-App app = new App()
-    .AddSystem<MoveSystem>();
-    
-app.RunLoop();
+// Initialize entities directly in the ECS, or use a CommandBuffer inside your systems.
+// Chaining .With() lets you insert components easily.
+Entity player = app.Ecs.CreateEntity()
+    .With(new Position { X = 0, Y = 0 })
+    .With(new Velocity { Dx = 10, Dy = 5 })
+    .With(new PlayerTag());
+
+// Wire up your systems and run the game loop automatically[cite: 5].
+app.AddSystem(GameSystems.MoveSystem, SystemPhase.Update)
+   .RunLoop();
 
 ```
 
