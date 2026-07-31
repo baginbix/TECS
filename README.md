@@ -52,9 +52,9 @@ public struct PlayerTag { }
 public struct Frozen { }
 
 // --- Queries ---
-// Queries are now defined using source-generated ref structs!
+// Queries are defined using source-generated ref structs!
 // Use `ref readonly` for read-access and `ref` for write-access. 
-// The engine's DAG scheduler reads these to automatically multithread your systems!
+// The engine's scheduler reads these to automatically multi-thread your systems!
 [Query]
 public ref struct MoveQuery
 {
@@ -63,7 +63,7 @@ public ref struct MoveQuery
 }
 
 // --- Systems ---
-// Systems are now just static methods tagged with [System]. 
+// Systems are just static methods tagged with [System]. 
 // The source generator handles the binding, and dependencies (like CommandBuffer or Res<T>) are injected automatically.
 public static class GameSystems 
 {
@@ -80,7 +80,7 @@ public static class GameSystems
 }
 
 // --- Application Setup & Loop ---
-// The source generator automatically creates strongly-typed .AddSystem() extensions for your methods[cite: 14]!
+// The source generator automatically creates strongly-typed .AddSystem() extensions for your method!
 App app = new App();
 
 // Initialize entities directly in the ECS, or use a CommandBuffer inside your systems.
@@ -90,7 +90,7 @@ Entity player = app.Ecs.CreateEntity()
     .With(new Velocity { Dx = 10, Dy = 5 })
     .With(new PlayerTag());
 
-// Wire up your systems and run the game loop automatically[cite: 5].
+// Wire up your systems and run the game loop automatically.
 app.AddSystem(GameSystems.MoveSystem, SystemPhase.Update)
    .RunLoop();
 
