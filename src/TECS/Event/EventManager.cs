@@ -1,4 +1,4 @@
-namespace src.Event
+namespace TECS.Event
 {
     public class EventManager
     {

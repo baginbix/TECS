@@ -1,18 +1,18 @@
 using TECS.Queries;
 using TECS.Components;
-using src.Event;
+using TECS.Event;
 using TECS.Event;
 
 namespace TECS
 {
 
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
+    public class ECSSystemAttribute: Attribute{}
+
     public interface IEngine
     {
-        Query<T> Query<T>() where T : struct;
-        Query<T, E> Query<T, E>() where T : struct where E : struct;
-        Query<T, E, K> Query<T, E, K>() where T : struct where E : struct where K : struct;
         EventWriter<TEvent> GetEventWriter<TEvent>() where TEvent : struct;
-        EventReader<TEvent> ReadEvents<TEvent>() where TEvent : struct;
+        EventReader<TEvent> GetEventReader<TEvent>() where TEvent : struct;
         OptionRef<T> QueryComponent<T>(Entity entity) where T: struct;
         Option<T> QueryReadonlyComponent<T>(Entity entity) where T : struct;
         T GetResource<T>() where T:IResource;
@@ -104,7 +104,7 @@ namespace TECS
             int typeId = ComponentID<T>.Value;
             SparseSet<T> set = GetOrCreateSet<T>();
 
-            set.Add(entityId, component, GlobalTick);
+            set.Add(entityId, component, (uint)GlobalTick);
             entityMasks[entityId.Id].SetBit(typeId);
         }
 
@@ -134,9 +134,9 @@ namespace TECS
         where E:struct
         where K:struct
         {
-            var optT = GetOrCreateSet<T>().GetValue(entity, GlobalTick);
-            var optE = GetOrCreateSet<E>().GetValue(entity, GlobalTick);
-            var optK = GetOrCreateSet<K>().GetValue(entity, GlobalTick);
+            var optT = GetOrCreateSet<T>().GetValue(entity, (uint)GlobalTick);
+            var optE = GetOrCreateSet<E>().GetValue(entity, (uint)GlobalTick);
+            var optK = GetOrCreateSet<K>().GetValue(entity, (uint)GlobalTick);
 
             if(optT.IsNone || optE.IsNone || optK.IsNone)
             {
@@ -175,21 +175,11 @@ namespace TECS
             entityMasks[entityId.Id].ClearBit(ComponentID<T>.Value);
         }
 
-        private void AddToGroup(Entity entity)
-        {
-            Bitset bitset = entityMasks[entity.Id];
-            if (!groups.TryGetValue(bitset, out var group))
-            {
-                group = new SparseSet<Entity>(1000);
-                groups.Add(bitset, group);
-            }
-            group.Add(entity, entity, GlobalTick);
-        }
 
         public OptionRef<T> QueryComponent<T>(Entity entity) where T:struct
         {
             var set = GetOrCreateSet<T>();
-            return  set.GetValue(entity, GlobalTick);
+            return  set.GetValue(entity, (uint)GlobalTick);
         }
 
         public Option<T> QueryReadonlyComponent<T>(Entity entity) where T : struct
@@ -197,26 +187,7 @@ namespace TECS
             return GetOrCreateSet<T>().GetReadonlyValue(entity);
         }
 
-        public Query<T> Query<T>()
-        where T : struct
-        {
-            return new Query<T>(GetOrCreateSet<T>(),entityMasks, currentSystemLastTick, GlobalTick);
-        }
-
-        public Query<T, E> Query<T, E>()
-        where T : struct
-        where E : struct
-        {
-            return new Query<T, E>(GetOrCreateSet<T>(), GetOrCreateSet<E>(), entityMasks,currentSystemLastTick, GlobalTick);
-        }
-
-        public Query<T, E, K> Query<T, E, K>()
-        where T : struct
-        where E : struct
-        where K : struct
-        {
-            return new Query<T, E, K>(GetOrCreateSet<T>(), GetOrCreateSet<E>(), GetOrCreateSet<K>(), entityMasks, currentSystemLastTick, GlobalTick);
-        }
+        public SparseSet<T> GetSparseSet<T>() where T: struct => GetOrCreateSet<T>();
 
         public List<T> GetComponentList<T>() where T : struct
         {
@@ -239,7 +210,7 @@ namespace TECS
             return (EventWriter<TEvent>)writer;
         }
 
-        public EventReader<TEvent> ReadEvents<TEvent>() where TEvent: struct
+        public EventReader<TEvent> GetEventReader<TEvent>() where TEvent: struct
         {
             if (!cachedReaders.TryGetValue((activeSystem, typeof(TEvent)), out var reader))
             {

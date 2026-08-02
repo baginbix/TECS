@@ -7,9 +7,9 @@ namespace TECS.Queries.Components;
 public ref struct ComponentItem<T> where T: struct
 {
     private readonly ref T component;
-    private readonly ref ulong tick;
+    private readonly ref uint tick;
     private readonly ulong globalTick;
-    public ComponentItem(ref T component, ref ulong tick, ulong globalTick)
+    public ComponentItem(ref T component, ref uint tick, ulong globalTick)
     {
         this.component = ref component;
         this.tick = ref tick;
@@ -22,7 +22,7 @@ public ref struct ComponentItem<T> where T: struct
     {
         get
         {
-            tick = globalTick;
+            tick = (uint)globalTick;
             return ref component;
         }
     }

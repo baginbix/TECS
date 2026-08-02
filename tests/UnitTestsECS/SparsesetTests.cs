@@ -1,13 +1,20 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using TECS;
+using TECS.Query;
 using TECS.Tests;
 using Xunit;
 
 namespace UnitTestsECS
 {
+    [Query]
+    public ref struct QueryPos
+    {
+        public ref Position pos;
+    }
     public class SparsesetTests
     {
         [Fact]
@@ -26,7 +33,8 @@ namespace UnitTestsECS
 
             // Assert all 5000 entities can be iterated successfully
             int count = 0;
-            foreach (var item in ecs.Query<Position>())
+            var query = new Query<QueryPos>(ecs);
+            foreach (var item in query)
             {
                 count++;
             }

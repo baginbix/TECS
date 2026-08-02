@@ -21,7 +21,7 @@ namespace TECS
         public const int PAGE_MASK = PAGE_SIZE - 1;
 
         List<T> dense;
-        List<ulong> ticks;
+        List<uint> ticks;
         List<Entity> denseEntities = new List<Entity>();
         int[][] sparse;
         private static readonly bool isTag = typeof(T).GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).Length == 0;
@@ -32,9 +32,9 @@ namespace TECS
             
             int numPages = (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
             sparse =  new int[numPages][];
-            ticks = new List<ulong>(size);
+            ticks = new List<uint>(size);
         }
-        public void Add(Entity entity, T data, ulong currentTick){
+        public void Add(Entity entity, T data, uint currentTick){
             int pageIndex = entity.Id >> PAGE_SHIFT;
             int pageOffset = entity.Id & PAGE_MASK;
             
@@ -100,7 +100,7 @@ namespace TECS
             return ref CollectionsMarshal.AsSpan(dense)[index];
         }
         */
-        public OptionRef<T> GetValue(Entity entity, ulong currentTick){
+        public OptionRef<T> GetValue(Entity entity, uint currentTick){
             int pageIndex = entity.Id >> PAGE_SHIFT;
             int pageOffset = entity.Id & PAGE_MASK;
             if(pageIndex >= sparse.Length || sparse[pageIndex] == null)
@@ -143,7 +143,7 @@ namespace TECS
             return denseEntities;
         }
 
-        public Span<ulong> GetLastTicks() => CollectionsMarshal.AsSpan(ticks);
+        public Span<uint> GetLastTicks() => CollectionsMarshal.AsSpan(ticks);
 
         public int[][] GetSparseSet() => sparse;
     }
