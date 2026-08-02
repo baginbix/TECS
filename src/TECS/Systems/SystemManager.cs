@@ -7,8 +7,8 @@ using TECS;
 using TECS.Commands;
 using TECS.Query;
 
-namespace TECS.Systems
-{
+namespace TECS.Systems;
+
     public enum SystemPhase
     {
         StartUp,         // Runs once when app is starting
@@ -27,6 +27,7 @@ namespace TECS.Systems
         public SystemBinding System;
         public ulong LastRunTick;
     }
+    /*
     internal class SystemManager
     {
         private readonly ECS _ecs;
@@ -116,7 +117,7 @@ namespace TECS.Systems
                     systemItem.LastRunTick = _ecs.GlobalTick; 
                 }            
             }
-            */
+            
             for(int i = startPhase; i<_systemGraphs.Length-1; i++)
             {
                 _dispatcher.ExecutePhase(_systemGraphs[i],_ecs,_commandBuffer);
@@ -143,3 +144,4 @@ namespace TECS.Systems
         }
     }
 }
+*/

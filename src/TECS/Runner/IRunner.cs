@@ -16,7 +16,6 @@ namespace TECS.Runner
     /// </summary>
     public interface IRunner
     {   
-        public void SetSchedular(IScheduler scheduler);
         public void Run(App app);
     }
 }

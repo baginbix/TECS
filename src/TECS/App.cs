@@ -15,8 +15,8 @@ public delegate void SystemDelegate<T>(Query<T> query) where T : allows ref stru
 
 public abstract class SystemBinding
 {
-    public Type[] Reads { get; } = Array.Empty<Type>();
-    public Type[] Writes { get; } = Array.Empty<Type>();
+    public Type[] Reads { get; protected set; } = Array.Empty<Type>();
+    public Type[] Writes { get; protected set;} = Array.Empty<Type>();
     public abstract void Run(ECS ecs, CommandBuffer cmd);
 }
 
@@ -24,18 +24,29 @@ public partial class App
 {
     internal ECS ecs;
     public ECS Ecs => ecs;
-    private SystemManager systemManager;
+    //private SystemManager systemManager;
 
     private bool run = true;
 
     private bool Initialized = false;
 
     private IRunner _runner;
+    private IScheduler _scheduler;
+    public IScheduler Scheduler => _scheduler;
 
     public App()
     {
         ecs = new ECS();
-        systemManager = new (ecs);
+        //systemManager = new (ecs);
+        _runner = new RunnerOnce();
+        // The main scheduler that runs the other schedulers
+        var rootScheduler = new MainScheduler(ecs);
+        _scheduler = rootScheduler;
+        AddResource(rootScheduler);
+
+        // Sub schedulers for each phase
+        var schedulers = new Schedulers();
+        AddResource(schedulers);
     }
 
     public App SetRunner(IRunner runner)
@@ -44,23 +55,16 @@ public partial class App
         return this;
     }
 
-    public App SetRunner(Action<LambdaRunner> runner) 
+    public App SetRunner(Action<App> runner) 
     {
         _runner = new LambdaRunner(runner);
-        _runner.SetSchedular(new StandardSchedular());
-        return this;
-    }
-    public App SetRunner(Action<LambdaRunner> runner, IScheduler scheduler) 
-    {
-        _runner = new LambdaRunner(runner);
-        _runner.SetSchedular(scheduler);
         return this;
     }
 
     public App AddState<TState>(TState startState) where TState : struct, Enum
     {
         var stateManger = new StateManager<TState>(startState);
-        systemManager.AddStateManager(stateManger);
+        //systemManager.AddStateManager(stateManger)
         ecs.InsertResource(stateManger);
         return this;
     }
@@ -80,7 +84,8 @@ public partial class App
 
     public App AddSystemBinding(SystemBinding systemBinding, SystemPhase phase)
     {
-        systemManager.Add(systemBinding,phase);
+        _scheduler.AddSystem(systemBinding, phase);
+        //systemManager.Add(systemBinding,phase);
         return this;
     }
 
@@ -131,6 +136,12 @@ public partial class App
         return this;
     }
 
+    public App SetScheduler(SystemPhase phase, IScheduler scheduler)
+    {
+        ecs.GetResource<Schedulers>().schedulers[phase] = scheduler;
+        return this;
+    }
+
     public void RunLoop()
     {
         if(Initialized)
@@ -140,7 +151,7 @@ public partial class App
         Time.Time timeResource = new Time.Time();
         ecs.InsertResource(timeResource);
         
-        systemManager.OnStart();
+        //systemManager.OnStart();
         Initialized = true;
         Stopwatch stopwatch = Stopwatch.StartNew();
         long lastTick = stopwatch.ElapsedTicks;

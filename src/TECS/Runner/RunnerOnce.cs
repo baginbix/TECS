@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using TECS.Commands;
 using TECS.Scheduler;
+using TECS.Systems;
 
 namespace TECS.Runner
 {
@@ -21,24 +22,13 @@ namespace TECS.Runner
             {
                 ecs = _app.Ecs;
                 ecs.InsertResource<Time.Time>();
-                initialized = true;
-                _scheduler.RunPhase(Systems.SystemPhase.StartUp,     _app.Ecs);
-                
+                initialized = true; 
+                _scheduler = ecs.GetResource<MainScheduler>();
             }
-            _scheduler.RunPhase(Systems.SystemPhase.InitializeFrame, _app.Ecs);
-            _scheduler.RunPhase(Systems.SystemPhase.Input,           _app.Ecs);
-            _scheduler.RunPhase(Systems.SystemPhase.PreUpdate,       _app.Ecs);
-            _scheduler.RunPhase(Systems.SystemPhase.Update,          _app.Ecs);
-            _scheduler.RunPhase(Systems.SystemPhase.Physics,         _app.Ecs);
-            _scheduler.RunPhase(Systems.SystemPhase.PostUpdate,      _app.Ecs);
-            _scheduler.RunPhase(Systems.SystemPhase.Render,          _app.Ecs);   
+            _scheduler.RunPhase(SystemPhase.Update, ecs);
             ecs.Flush();
             ecs.NextTick(); 
         }
 
-        public void SetSchedular(IScheduler scheduler)
-        {
-            _scheduler = scheduler;
-        }
     }
 }

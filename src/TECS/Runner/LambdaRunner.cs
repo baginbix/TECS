@@ -5,23 +5,16 @@ using TECS.Scheduler;
 
 public class LambdaRunner : IRunner
 {
-    private readonly Action<LambdaRunner> _runAction;
-    private IScheduler _scheduler;
+    private readonly Action<App> _runAction;
 
-    public LambdaRunner(Action<LambdaRunner> runAction)
+    public LambdaRunner(Action<App> runAction)
     {
-        _scheduler = new StandardSchedular();
         _runAction = runAction;
     }
 
     public void Run(App app)
     {
         // Simply invoke the user's lambda, passing the app in!
-        _runAction(this);
-    }
-
-    public void SetSchedular(IScheduler scheduler)
-    {
-        _scheduler = scheduler;
+        _runAction(app);
     }
 }

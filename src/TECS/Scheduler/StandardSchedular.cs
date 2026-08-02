@@ -12,7 +12,8 @@ namespace TECS.Scheduler
     {
         private IExecutor _executor;
         private readonly Dictionary<SystemPhase, List<SystemItem>> _systems = new();
-
+        private bool _isDirty = true;
+        private readonly Dictionary<SystemPhase, List<SystemNode>> _graph = new();
         public StandardSchedular()
         {
             _executor = new MultiThreadExecutor();
@@ -31,14 +32,20 @@ namespace TECS.Scheduler
                 System = system,
                 LastRunTick =  0
             });
+            _isDirty = true;
         }
 
         public void RunPhase(SystemPhase stage, ECS ecs)
         {
-            // TODO: Should not be done during runtime, change it so it runs once
-            // and updates if necessary
-            List<SystemNode> graph = BuildGraph(_systems[stage]);
-            _executor.Execute(graph, ecs);
+            if (_isDirty)
+            {
+                foreach (var phase in _systems.Keys)
+                {
+                    _graph[phase] = BuildGraph(_systems[phase]);
+                }
+                _isDirty = false;
+            }
+            _executor.Execute(_graph[stage], ecs);
         }
 
         private List<SystemNode> BuildGraph(List<SystemItem> systems)
