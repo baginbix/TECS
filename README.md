@@ -9,7 +9,7 @@ It utilizes a Sparse Set architecture to guarantee $O(1)$ component access while
 ## Key Features
 - **Zero-Allocation Queries:** Iterate through millions of entities without triggering the Garbage Collector.
 - **Modern C#:** Takes full advantage of .NET 8+ features like `ref structs` and advanced pattern matching.
-- **Expressive API:** Easy-to-read querying with built-in mutation tracking (`.Read` and `.Write`), and advanced filtering (`With<T>`, `Without<T>`).
+- **Expressive API:** Easy-to-read querying with built-in mutation tracking, and advanced filtering (`With<T>`, `Without<T>`).
 - **Source generation:** Express yourself with easy to make queries and systems that utilize source generation to make the impossible possible.
 - **Multi-threading:** To get maximum performance systems can be run in parallel.
 
