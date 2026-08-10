@@ -1,5 +1,7 @@
 using System;
+using System.Runtime.CompilerServices;
 using TECS;
+using TECS.Commands;
 using TECS.Query; 
 using Xunit;
 
@@ -18,72 +20,94 @@ namespace UnitTestsECS
         {
             public ref Position Pos;
             public ref Velocity Vel;
+        }
+        [Query]
+        public ref struct NothingQuery
+        {
             public ref Health Hp;
         }
 
         // 3. Define the Systems for testing
         public static class TestSystems
         {
-            public static int ExecutionCount = 0;
 
             [System]
             public static void CountMovementSystem(Query<MovementQuery> query)
             {
                 foreach (var item in query)
                 {
-                    ExecutionCount++;
+                    item.Pos.X += item.Vel.Dx;
                 }
+            }
+
+            public static void QueryNothing(Query<NothingQuery> query)
+            {
+                foreach (var item in query)
+                {
+                    item.Hp.Hp += 1;
+                }
+            }
+
+            public static void QuerySingle(Query<MovementQuery> query)
+            {
+                var item = query.Single();
+                item.Pos.X += item.Vel.Dx;
             }
         }
     public class QueryTests
     {
 
-        private App SetupTestApp()
-        {
-            var app = new App();
-
-            // We can now access app.ecs directly because it is 'internal'
-            
-            Entity e0 = app.ecs.CreateEntity();
-            app.ecs.InsertComponent(e0, new Position());
-            app.ecs.InsertComponent(e0, new Velocity());
-            app.ecs.InsertComponent(e0, new Health());
-            app.ecs.InsertComponent(e0, new PlayerTag());
-
-            Entity e1 = app.ecs.CreateEntity();
-            app.ecs.InsertComponent(e1, new Position());
-            app.ecs.InsertComponent(e1, new Velocity());
-            app.ecs.InsertComponent(e1, new Health());
-
-            Entity e2 = app.ecs.CreateEntity();
-            app.ecs.InsertComponent(e2, new Position());
-            app.ecs.InsertComponent(e2, new Velocity());
-            app.ecs.InsertComponent(e2, new Health());
-            app.ecs.InsertComponent(e2, new Frozen());
-
-            Entity e3 = app.ecs.CreateEntity();
-            app.ecs.InsertComponent(e3, new Position());
-            app.ecs.InsertComponent(e3, new Health());
-            app.ecs.InsertComponent(e3, new PlayerTag());
-
-            return app;
-        }
-
         [Fact]
         public void System_ProcessesAllValidEntities()
         {
-            TestSystems.ExecutionCount = 0;
-            var app = SetupTestApp();
-            
-            // Register using the auto-generated method
-            app.AddSystem(TestSystems.CountMovementSystem);
+            var ecs = new ECS();
+            var entity = ecs.CreateEntity();
+            ecs.InsertComponent(entity, new Position { X = 0 });
+            ecs.InsertComponent(entity, new Velocity { Dx = 5 });
 
+            TestSystems.CountMovementSystem(new Query<MovementQuery>(ecs));
 
-            // Run one frame[cite: 2]
-            app.Run();
+            Assert.Equal(5, ecs.QueryComponent<Position>(entity).Unwrap().X);
+        }
 
-            // e0, e1, and e2 have all required components. e3 is missing Velocity.
-            Assert.Equal(3, TestSystems.ExecutionCount);
+        [Fact]
+        public void System_HandleQueryingNothing()
+        {
+            var ecs = new ECS();
+            var entity = ecs.CreateEntity();
+
+            var exceptions = Record.Exception(() => TestSystems.QueryNothing(new Query<NothingQuery>(ecs)));
+
+            Assert.Null(exceptions);
+        }
+
+        [Fact]
+        public void System_QuerySingleWithOneComponent_Success()
+        {
+            var ecs = new ECS();
+            var entity = ecs.CreateEntity();
+            ecs.InsertComponent(entity, new Position { X = 0 });
+            ecs.InsertComponent(entity, new Velocity { Dx = 5 });
+
+            TestSystems.QuerySingle(new Query<MovementQuery>(ecs));
+
+            Assert.Equal(5, ecs.QueryComponent<Position>(entity).Unwrap().X);
+        }
+        [Fact]
+        public void System_QuerySingleWithMultipleComponents_ThrowsException()
+        {
+            var ecs = new ECS();
+            var entity1 = ecs.CreateEntity();
+            ecs.InsertComponent(entity1, new Position { X = 0 });
+            ecs.InsertComponent(entity1, new Velocity { Dx = 5 });
+
+            var entity2 = ecs.CreateEntity();
+            ecs.InsertComponent(entity2, new Position { X = 10 });
+            ecs.InsertComponent(entity2, new Velocity { Dx = 15 });
+
+            var exceptions = Record.Exception(() => TestSystems.QuerySingle(new Query<MovementQuery>(ecs)));
+
+            Assert.NotNull(exceptions);
         }
     }
 }

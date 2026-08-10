@@ -10,7 +10,10 @@ namespace UnitTestsECS
 
     // 1. Create a dummy query so the Roslyn Generator picks up the systems
     [Query]
-    public struct EventQuery { }
+    public ref struct EventQuery
+    {
+        public ref int Dummy; // This is just a placeholder to satisfy the generator
+    }
 
     // 2. Define your systems using the new static attribute architecture
     public static class TestEventSystems

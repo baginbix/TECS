@@ -19,12 +19,27 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
-    <!-- 1. This gives your tests access to App, ECS, TestQuery, etc. -->
     <ProjectReference Include="..\..\src\TECS\TECS.csproj" />
 
-    <!-- 2. This runs the generator to build your AddSystem extensions -->
+    <!--This runs the generator to build your AddSystem extensions -->
     <ProjectReference Include="..\..\src\Generator\Generator.csproj" 
                       OutputItemType="Analyzer" 
                       ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+
+  <PropertyGroup>
+    <!--Tells Roslyn to save generated files to disk -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    
+    <!-- Specifies the folder path where files will be saved -->
+    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Prevents duplicate symbol errors (CS0101) by telling 
+         the compiler NOT to compile the files sitting on disk, 
+         since the generator will inject them in-memory during build -->
+    <Compile Remove="Generated\**" />
   </ItemGroup>
 </Project>

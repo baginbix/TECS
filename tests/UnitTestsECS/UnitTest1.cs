@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Xunit;
 using TECS;
 using TECS.Query;
+using TECS.Resources;
 
 namespace TECS.Tests
 {

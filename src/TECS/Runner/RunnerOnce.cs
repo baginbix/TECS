@@ -20,7 +20,7 @@ namespace TECS.Runner
         {
             if(!initialized)
             {
-                ecs = _app.Ecs;
+                ecs = _app.ecs;
                 ecs.InsertResource<Time.Time>();
                 initialized = true; 
                 _scheduler = ecs.GetResource<MainScheduler>();

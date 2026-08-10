@@ -21,7 +21,6 @@ public abstract class SystemBinding
 public partial class App
 {
     internal ECS ecs;
-    public ECS Ecs => ecs;
     //private SystemManager systemManager;
 
     private bool run = true;

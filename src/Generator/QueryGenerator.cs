@@ -261,9 +261,9 @@ public class QueryGenerator : IIncrementalGenerator
                 constructors.AppendLine($"            _ticks{i} = ref MemoryMarshal.GetReference(set{i}.GetLastTicks());");
                 needTick = true;
             }
-            fields.AppendLine( needTick ? $"        private uint _currentTick;" : "");
-            constructors.AppendLine( needTick ? "        _currentTick = (uint)_ecs.GlobalTick;" : "");
         }
+        fields.AppendLine( needTick ? $"        private uint _currentTick;" : "");
+        constructors.AppendLine( needTick ? "        _currentTick = (uint)_ecs.GlobalTick;" : "");
     }
 
     private static void GenerateFilterCaches(QueryModel model, StringBuilder fields, StringBuilder constructors, StringBuilder checks)
