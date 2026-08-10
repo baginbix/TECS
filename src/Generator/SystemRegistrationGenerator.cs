@@ -191,7 +191,7 @@ public class SystemRegistrationGenerator : IIncrementalGenerator
                 // Generate AddSystemOnExit
                 sourceBuilder.AppendLine($"        public static App AddSystemOnExit<TState>(this App app, TState state, SystemDelegate_{uniqueId} system) where TState : struct, Enum");
                 sourceBuilder.AppendLine("        {");
-                sourceBuilder.AppendLine($"            app.AddSystemOnExit(state, new SystemBinding_{uniqueId}(system));"); // <-- NEW (Safe!)
+                sourceBuilder.AppendLine($"            app.AddSystemOnExit(state, new SystemBinding_{uniqueId}(system));");
                 sourceBuilder.AppendLine("            return app;");
                 sourceBuilder.AppendLine("        }");
                 sourceBuilder.AppendLine();
@@ -215,7 +215,6 @@ public class SystemRegistrationGenerator : IIncrementalGenerator
                     
                     foreach (var q in queryTypes)
                     {
-                        bindingCtorBuilder.AppendLine($"                // {q.Sig}");
                         string fullExtensionPath = "global::" + q.Id.Replace('_', '.') + "Extensions";
                         string extName = $"{q.Id.Split('_').Last()}Extensions";
                         if(q.Sig != "CommandBuffer")

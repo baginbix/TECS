@@ -1,8 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TECS.Executors;
+using TECS.Resources;
 using TECS.Systems;
 
 namespace TECS.Scheduler

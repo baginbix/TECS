@@ -244,6 +244,7 @@ public class QueryGenerator : IIncrementalGenerator
     // --- Generation Helpers ---
     private static void GenerateComponentCaches(QueryModel model, StringBuilder fields, StringBuilder constructors)
     {
+        bool needTick = false;
         for (int i = 0; i < model.Fields.Count; i++)
         {
             var field = model.Fields[i];
@@ -254,6 +255,14 @@ public class QueryGenerator : IIncrementalGenerator
             constructors.AppendLine($"            var set{i} = _ecs.GetSparseSet<{field.Type}>();");
             constructors.AppendLine($"            _dense{i} = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(set{i}.GetDense()));");
             constructors.AppendLine($"            _sparse{i} = ref MemoryMarshal.GetReference(set{i}.GetSparseSet());");
+            if (!field.IsReadonly)
+            {
+                fields.AppendLine($"    private ref uint _ticks{i};");
+                constructors.AppendLine($"            _ticks{i} = ref MemoryMarshal.GetReference(set{i}.GetLastTicks());");
+                needTick = true;
+            }
+            fields.AppendLine( needTick ? $"        private uint _currentTick;" : "");
+            constructors.AppendLine( needTick ? "        _currentTick = (uint)_ecs.GlobalTick;" : "");
         }
     }
 
@@ -327,6 +336,7 @@ public class QueryGenerator : IIncrementalGenerator
             idx.AppendLine($"int idx{i} = enumerator._idx{i};");
             getSets.AppendLine($"            var set{i} = _ecs.GetSparseSet<{model.Fields[i].Type}>();");
             getSets.AppendLine($"            ref var dense{i} = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(set{i}.GetDense()));");
+  
             string comma = (i == model.Fields.Count - 1) ? "" : ",";
             string refStr = model.Fields[i].IsRef ? "ref" : "";
             objectInit.AppendLine($" {model.Fields[i].Name} = {refStr} Unsafe.Add(ref dense{i}, idx{i}){comma}");
@@ -401,6 +411,13 @@ public class QueryGenerator : IIncrementalGenerator
                 sb.AppendLine($"                        if(_idx{other} < 0) continue;");
             }
             sb.AppendLine($"                        _idx{driver} = _index;");
+            for (int i = 0; i < model.Fields.Count; i++)
+            {
+                if (!model.Fields[i].IsReadonly)
+                {
+                    sb.AppendLine($"                        Unsafe.Add(ref _ticks{i}, _idx{i}) = _currentTick;");
+                }
+            }
             sb.AppendLine($"                        return true;");
             sb.AppendLine($"                    }}");
             sb.AppendLine($"                    break;");

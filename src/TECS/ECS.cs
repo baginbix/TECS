@@ -2,6 +2,7 @@ using TECS.Queries;
 using TECS.Components;
 using TECS.Event;
 using TECS.Event;
+using TECS.Resources;
 
 namespace TECS
 {
@@ -16,6 +17,7 @@ namespace TECS
         OptionRef<T> QueryComponent<T>(Entity entity) where T: struct;
         Option<T> QueryReadonlyComponent<T>(Entity entity) where T : struct;
         T GetResource<T>() where T:IResource;
+        T GetTResourceMut<T>() where T:IResource;
     }
 
     public class ECS : IEngine
@@ -29,7 +31,7 @@ namespace TECS
 
         private Bitset[] entityMasks;
 
-        Dictionary<Type, IResource> resources;
+        Dictionary<Type, ResourceStorage> resources;
 
         Dictionary<Type, IEventWriter> cachedWriters;
         Dictionary<(Type systemType,Type eventType), IEventReader> cachedReaders;
@@ -79,11 +81,11 @@ namespace TECS
 
         public void InsertResource<T>(T newResource) where T:IResource
         {
-            resources.Add(typeof(T), newResource);
+            resources.Add(typeof(T), new ResourceStorage(newResource));
         }
         public void InsertResource<T>() where T:IResource, new()
         {
-            resources.Add(typeof(T), new T());
+            resources.Add(typeof(T), new ResourceStorage(new T()));
         }
 
         public T GetResource<T>() where T :IResource
@@ -91,13 +93,31 @@ namespace TECS
             #if DEBUG
             if(resources.TryGetValue(typeof(T),  out var value))
             {
-                return (T)value;
+                return (T)value.GetResource();
             }
             throw new InvalidOperationException($"The resource of type {typeof(T).Name} has not been added to the ECS!");
             # else
-            return (T)resources[typeof(T)];
+            return (T)resources[typeof(T)].GetResource();
             #endif
         }
+
+        public T GetTResourceMut<T>() where T :IResource
+        {
+            #if DEBUG
+            if(resources.TryGetValue(typeof(T),  out var value))
+            {
+                value.UpdateLastTick((uint)GlobalTick);
+                return (T)value.GetResource();
+            }
+            throw new InvalidOperationException($"The resource of type {typeof(T).Name} has not been added to the ECS!");
+            # else
+            var value = resources[typeof(T)];
+            value.UpdateLastTick((uint)GlobalTick);
+            return (T)value.GetResource();
+            #endif
+        }
+
+
 
         public void InsertComponent<T>(Entity entityId, T component) where T : struct
         {

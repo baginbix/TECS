@@ -1,3 +1,5 @@
+using TECS.Resources;
+
 namespace TECS.Time;
 
 public class Time : IResource
