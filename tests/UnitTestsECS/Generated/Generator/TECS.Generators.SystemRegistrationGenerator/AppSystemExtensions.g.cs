@@ -10,51 +10,51 @@ namespace TECS
 {
     public static class AppExtensions
     {
-        public static App AddSystem(this App app, SystemDelegate_UnitTestsECS_EventQuery_UnitTestsECS_MockEventWrite system, SystemPhase phase = SystemPhase.Update)
+        public static App AddSystem(this App app, SystemDelegate_UnitTestsECS_MockEventWrite system, SystemPhase phase = SystemPhase.Update)
         {
-            app.AddSystemBinding(new SystemBinding_UnitTestsECS_EventQuery_UnitTestsECS_MockEventWrite(system), phase);
+            app.AddSystemBinding(new SystemBinding_UnitTestsECS_MockEventWrite(system), phase);
             return app;
         }
 
-        public static App AddSystemOnEnter<TState>(this App app, TState state, SystemDelegate_UnitTestsECS_EventQuery_UnitTestsECS_MockEventWrite system) where TState : struct, Enum
+        public static App AddSystemOnEnter<TState>(this App app, TState state, SystemDelegate_UnitTestsECS_MockEventWrite system) where TState : struct, Enum
         {
-            app.AddSystemOnEnter(state, new SystemBinding_UnitTestsECS_EventQuery_UnitTestsECS_MockEventWrite(system));
+            app.AddSystemOnEnter(state, new SystemBinding_UnitTestsECS_MockEventWrite(system));
             return app;
         }
 
-        public static App AddSystemOnUpdate<TState>(this App app, TState state, SystemDelegate_UnitTestsECS_EventQuery_UnitTestsECS_MockEventWrite system) where TState : struct, Enum
+        public static App AddSystemOnUpdate<TState>(this App app, TState state, SystemDelegate_UnitTestsECS_MockEventWrite system) where TState : struct, Enum
         {
-            app.AddSystemOnUpdate(state, new SystemBinding_UnitTestsECS_EventQuery_UnitTestsECS_MockEventWrite(system));
+            app.AddSystemOnUpdate(state, new SystemBinding_UnitTestsECS_MockEventWrite(system));
             return app;
         }
 
-        public static App AddSystemOnExit<TState>(this App app, TState state, SystemDelegate_UnitTestsECS_EventQuery_UnitTestsECS_MockEventWrite system) where TState : struct, Enum
+        public static App AddSystemOnExit<TState>(this App app, TState state, SystemDelegate_UnitTestsECS_MockEventWrite system) where TState : struct, Enum
         {
-            app.AddSystemOnExit(state, new SystemBinding_UnitTestsECS_EventQuery_UnitTestsECS_MockEventWrite(system));
+            app.AddSystemOnExit(state, new SystemBinding_UnitTestsECS_MockEventWrite(system));
             return app;
         }
 
-        public static App AddSystem(this App app, SystemDelegate_UnitTestsECS_EventQuery_UnitTestsECS_MockEventRead system, SystemPhase phase = SystemPhase.Update)
+        public static App AddSystem(this App app, SystemDelegate_UnitTestsECS_MockEventRead system, SystemPhase phase = SystemPhase.Update)
         {
-            app.AddSystemBinding(new SystemBinding_UnitTestsECS_EventQuery_UnitTestsECS_MockEventRead(system), phase);
+            app.AddSystemBinding(new SystemBinding_UnitTestsECS_MockEventRead(system), phase);
             return app;
         }
 
-        public static App AddSystemOnEnter<TState>(this App app, TState state, SystemDelegate_UnitTestsECS_EventQuery_UnitTestsECS_MockEventRead system) where TState : struct, Enum
+        public static App AddSystemOnEnter<TState>(this App app, TState state, SystemDelegate_UnitTestsECS_MockEventRead system) where TState : struct, Enum
         {
-            app.AddSystemOnEnter(state, new SystemBinding_UnitTestsECS_EventQuery_UnitTestsECS_MockEventRead(system));
+            app.AddSystemOnEnter(state, new SystemBinding_UnitTestsECS_MockEventRead(system));
             return app;
         }
 
-        public static App AddSystemOnUpdate<TState>(this App app, TState state, SystemDelegate_UnitTestsECS_EventQuery_UnitTestsECS_MockEventRead system) where TState : struct, Enum
+        public static App AddSystemOnUpdate<TState>(this App app, TState state, SystemDelegate_UnitTestsECS_MockEventRead system) where TState : struct, Enum
         {
-            app.AddSystemOnUpdate(state, new SystemBinding_UnitTestsECS_EventQuery_UnitTestsECS_MockEventRead(system));
+            app.AddSystemOnUpdate(state, new SystemBinding_UnitTestsECS_MockEventRead(system));
             return app;
         }
 
-        public static App AddSystemOnExit<TState>(this App app, TState state, SystemDelegate_UnitTestsECS_EventQuery_UnitTestsECS_MockEventRead system) where TState : struct, Enum
+        public static App AddSystemOnExit<TState>(this App app, TState state, SystemDelegate_UnitTestsECS_MockEventRead system) where TState : struct, Enum
         {
-            app.AddSystemOnExit(state, new SystemBinding_UnitTestsECS_EventQuery_UnitTestsECS_MockEventRead(system));
+            app.AddSystemOnExit(state, new SystemBinding_UnitTestsECS_MockEventRead(system));
             return app;
         }
 
@@ -132,16 +132,15 @@ namespace TECS
 
     }
 
-    public delegate void SystemDelegate_UnitTestsECS_EventQuery_UnitTestsECS_MockEventWrite(Query<global::UnitTestsECS.EventQuery> p0, EventWriter<global::UnitTestsECS.MockEvent> p1);
-    public class SystemBinding_UnitTestsECS_EventQuery_UnitTestsECS_MockEventWrite : SystemBinding
+    public delegate void SystemDelegate_UnitTestsECS_MockEventWrite(EventWriter<global::UnitTestsECS.MockEvent> p0);
+    public class SystemBinding_UnitTestsECS_MockEventWrite : SystemBinding
     {
-        private readonly SystemDelegate_UnitTestsECS_EventQuery_UnitTestsECS_MockEventWrite _func;
-public SystemBinding_UnitTestsECS_EventQuery_UnitTestsECS_MockEventWrite(SystemDelegate_UnitTestsECS_EventQuery_UnitTestsECS_MockEventWrite func){
+        private readonly SystemDelegate_UnitTestsECS_MockEventWrite _func;
+public SystemBinding_UnitTestsECS_MockEventWrite(SystemDelegate_UnitTestsECS_MockEventWrite func){
     _func = func;
                     List<Type> readsList = new List<Type>();
                 List<Type> writesList = new List<Type>();
-                readsList.AddRange(global::UnitTestsECS.EventQueryExtensions.GetReads);
-                writesList.AddRange(global::UnitTestsECS.EventQueryExtensions.GetWrites);
+                // Id:UnitTestsECS_MockEventWrite, Sig: EventWriter<global::UnitTestsECS.MockEvent>, Arg: writer_0
                 readsList.AddRange(global::UnitTestsECS.MockEventWriteExtensions.GetReads);
                 writesList.AddRange(global::UnitTestsECS.MockEventWriteExtensions.GetWrites);
                 Reads = readsList.ToArray();
@@ -150,23 +149,21 @@ public SystemBinding_UnitTestsECS_EventQuery_UnitTestsECS_MockEventWrite(SystemD
 }
     public override void Run(ECS ecs , CommandBuffer cmd)
     {
-        
-                        var writer_1 = ecs.GetEventWriter<global::UnitTestsECS.MockEvent>();
-        _func(new Query<global::UnitTestsECS.EventQuery>(ecs), writer_1);
+        var writer_0 = ecs.GetEventWriter<global::UnitTestsECS.MockEvent>();
+        _func(writer_0);
         
     }
     }
 
-    public delegate void SystemDelegate_UnitTestsECS_EventQuery_UnitTestsECS_MockEventRead(Query<global::UnitTestsECS.EventQuery> p0, EventReader<global::UnitTestsECS.MockEvent> p1);
-    public class SystemBinding_UnitTestsECS_EventQuery_UnitTestsECS_MockEventRead : SystemBinding
+    public delegate void SystemDelegate_UnitTestsECS_MockEventRead(EventReader<global::UnitTestsECS.MockEvent> p0);
+    public class SystemBinding_UnitTestsECS_MockEventRead : SystemBinding
     {
-        private readonly SystemDelegate_UnitTestsECS_EventQuery_UnitTestsECS_MockEventRead _func;
-public SystemBinding_UnitTestsECS_EventQuery_UnitTestsECS_MockEventRead(SystemDelegate_UnitTestsECS_EventQuery_UnitTestsECS_MockEventRead func){
+        private readonly SystemDelegate_UnitTestsECS_MockEventRead _func;
+public SystemBinding_UnitTestsECS_MockEventRead(SystemDelegate_UnitTestsECS_MockEventRead func){
     _func = func;
                     List<Type> readsList = new List<Type>();
                 List<Type> writesList = new List<Type>();
-                readsList.AddRange(global::UnitTestsECS.EventQueryExtensions.GetReads);
-                writesList.AddRange(global::UnitTestsECS.EventQueryExtensions.GetWrites);
+                // Id:UnitTestsECS_MockEventRead, Sig: EventReader<global::UnitTestsECS.MockEvent>, Arg: writer_0
                 readsList.AddRange(global::UnitTestsECS.MockEventReadExtensions.GetReads);
                 writesList.AddRange(global::UnitTestsECS.MockEventReadExtensions.GetWrites);
                 Reads = readsList.ToArray();
@@ -175,9 +172,8 @@ public SystemBinding_UnitTestsECS_EventQuery_UnitTestsECS_MockEventRead(SystemDe
 }
     public override void Run(ECS ecs , CommandBuffer cmd)
     {
-        
-                        var writer_1 = ecs.GetEventReader<global::UnitTestsECS.MockEvent>();
-        _func(new Query<global::UnitTestsECS.EventQuery>(ecs), writer_1);
+        var writer_0 = ecs.GetEventReader<global::UnitTestsECS.MockEvent>();
+        _func(writer_0);
         
     }
     }
@@ -190,6 +186,7 @@ public SystemBinding_UnitTestsECS_MovementQuery(SystemDelegate_UnitTestsECS_Move
     _func = func;
                     List<Type> readsList = new List<Type>();
                 List<Type> writesList = new List<Type>();
+                // Id:UnitTestsECS_MovementQuery, Sig: Query<global::UnitTestsECS.MovementQuery>, Arg: new Query<global::UnitTestsECS.MovementQuery>(ecs)
                 readsList.AddRange(global::UnitTestsECS.MovementQueryExtensions.GetReads);
                 writesList.AddRange(global::UnitTestsECS.MovementQueryExtensions.GetWrites);
                 Reads = readsList.ToArray();
@@ -212,6 +209,7 @@ public SystemBinding_TECS_Tests_MoveQuery(SystemDelegate_TECS_Tests_MoveQuery fu
     _func = func;
                     List<Type> readsList = new List<Type>();
                 List<Type> writesList = new List<Type>();
+                // Id:TECS_Tests_MoveQuery, Sig: Query<global::TECS.Tests.MoveQuery>, Arg: new Query<global::TECS.Tests.MoveQuery>(ecs)
                 readsList.AddRange(global::TECS.Tests.MoveQueryExtensions.GetReads);
                 writesList.AddRange(global::TECS.Tests.MoveQueryExtensions.GetWrites);
                 Reads = readsList.ToArray();
@@ -234,6 +232,7 @@ public SystemBinding_TECS_Tests_DestroyTestQuery(SystemDelegate_TECS_Tests_Destr
     _func = func;
                     List<Type> readsList = new List<Type>();
                 List<Type> writesList = new List<Type>();
+                // Id:TECS_Tests_DestroyTestQuery, Sig: Query<global::TECS.Tests.DestroyTestQuery>, Arg: new Query<global::TECS.Tests.DestroyTestQuery>(ecs)
                 readsList.AddRange(global::TECS.Tests.DestroyTestQueryExtensions.GetReads);
                 writesList.AddRange(global::TECS.Tests.DestroyTestQueryExtensions.GetWrites);
                 Reads = readsList.ToArray();

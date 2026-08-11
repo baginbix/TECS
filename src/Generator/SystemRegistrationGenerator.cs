@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using Generator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -97,7 +98,7 @@ public class SystemRegistrationGenerator : IIncrementalGenerator
                 else if(t.Name == "EventReader" && t.TypeArguments.Length == 1 )
                 {
                     var qType = t.TypeArguments[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                     string argName = $"writer_{queryTypes.Count}";
+                     string argName = $"reader_{queryTypes.Count}";
                     queryTypes.Add( new (
                         $"EventReader<{qType}>",
                         qType.Replace("global::", "").Replace(".", "_") + "Read" ,
@@ -217,8 +218,13 @@ public class SystemRegistrationGenerator : IIncrementalGenerator
                     {
                         string fullExtensionPath = "global::" + q.Id.Replace('_', '.') + "Extensions";
                         string extName = $"{q.Id.Split('_').Last()}Extensions";
-                        if(q.Sig != "CommandBuffer")
+                        if(q.Sig == "Res")
+                        { 
+                            bindingCtorBuilder.AppendLine($"                readsList.AddRange(typeof({q.Id}));");
+                        }
+                        else if(q.Sig != "CommandBuffer")
                         {
+                            bindingCtorBuilder.AppendLine($"                // Id:{q.Id}, Sig: {q.Sig}, Arg: {q.Arg}");
                             bindingCtorBuilder.AppendLine($"                readsList.AddRange({fullExtensionPath}.GetReads);");
                             bindingCtorBuilder.AppendLine($"                writesList.AddRange({fullExtensionPath}.GetWrites);");   
                         }
@@ -267,5 +273,35 @@ public class SystemRegistrationGenerator : IIncrementalGenerator
         sourceBuilder.AppendLine("}");
 
         context.AddSource("AppSystemExtensions.g.cs", sourceBuilder.ToString());
+    }
+    private static SystemParam? ParseSystem(IParameterSymbol param, int index)
+    {
+        if (param.Type is not INamedTypeSymbol t) return null;
+        if(t.Name == "Query" && t.TypeArguments.Length == 1)
+        {
+            string queryStruct = t.TypeArguments[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            return new QueryParam(param.Name, index, queryStruct);
+        }
+        else if(t.Name == "CommandBuffer")
+        {
+            return new CommandBufferParam(param.Name, index);
+        }
+        else if(t.Name == "EventReader")
+        {
+            return new EventReaderParam(param.Name, index, param.Type.ToString());
+        }
+        else if(t.Name == "EventWriter")
+        {
+            return new EventWriterParam(param.Name, index, param.Type.ToString());
+        }
+        else if(t.Name == "Res")
+        {
+            return new ResParam(param.Name, index, param.Type.ToString());
+        }
+        else if(t.Name == "ResMut")
+        {
+            return new ResMutParam(param.Name, index, param.Type.ToString());
+        }
+        return null;
     }
 }

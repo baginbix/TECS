@@ -8,33 +8,23 @@ namespace UnitTestsECS
 {
     public record struct MockEvent(int damage);
 
-    // 1. Create a dummy query so the Roslyn Generator picks up the systems
-    [Query]
-    public ref struct EventQuery
-    {
-        public ref int Dummy; // This is just a placeholder to satisfy the generator
-    }
-
-    // 2. Define your systems using the new static attribute architecture
     public static class TestEventSystems
     {
         public static bool EventSent = false;
         public static bool EventRead = false;
 
         [System]
-        public static void MockSystemSendEvent(Query<EventQuery> query, EventWriter<MockEvent> writer)
+        public static void MockSystemSendEvent(EventWriter<MockEvent> writer)
         {
             var e = new MockEvent(5);
-            
-            // TODO: Hook up your new Event Writer logic here!
-            // Depending on your new design, it might look like this:
+        
             writer.Send(e);
 
             EventSent = true; // Mark as run for the test
         }
 
         [System]
-        public static void MockSystemReadEvent(Query<EventQuery> query, EventReader<MockEvent> reader)
+        public static void MockSystemReadEvent(EventReader<MockEvent> reader)
         {
             // TODO: Hook up your new Event Reader logic here!
             reader.Read();
