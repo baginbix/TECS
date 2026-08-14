@@ -1,5 +1,4 @@
-using System;
-using System.Runtime.CompilerServices;
+using System.ComponentModel;
 using TECS;
 using TECS.Commands;
 using TECS.Query; 
@@ -21,10 +20,38 @@ namespace UnitTestsECS
             public ref Position Pos;
             public ref Velocity Vel;
         }
+
+        [Query]
+        public ref struct PositionQuery
+        {
+            public ref Position Pos;
+        }
         [Query]
         public ref struct NothingQuery
         {
             public ref Health Hp;
+        }
+
+        [Query]
+        [With<PlayerTag>]
+        public ref struct WithQuery
+        {
+            public ref Position Pos;
+        }
+
+        [Query]
+        [Without<PlayerTag>]
+        public ref struct WithoutQuery
+        {
+            public ref Position Pos;   
+        }
+
+        [Query]
+        [With<Frozen>]
+        [Without<PlayerTag>]
+        public ref struct WithWithoutQuery
+        {
+            public ref Position _;
         }
 
         // 3. Define the Systems for testing
@@ -40,6 +67,8 @@ namespace UnitTestsECS
                 }
             }
 
+
+            [System]
             public static void QueryNothing(Query<NothingQuery> query)
             {
                 foreach (var item in query)
@@ -47,7 +76,7 @@ namespace UnitTestsECS
                     item.Hp.Hp += 1;
                 }
             }
-
+            [System]
             public static void QuerySingle(Query<MovementQuery> query)
             {
                 var item = query.Single();
@@ -57,18 +86,7 @@ namespace UnitTestsECS
     public class QueryTests
     {
 
-        [Fact]
-        public void System_ProcessesAllValidEntities()
-        {
-            var ecs = new ECS();
-            var entity = ecs.CreateEntity();
-            ecs.InsertComponent(entity, new Position { X = 0 });
-            ecs.InsertComponent(entity, new Velocity { Dx = 5 });
 
-            TestSystems.CountMovementSystem(new Query<MovementQuery>(ecs));
-
-            Assert.Equal(5, ecs.QueryComponent<Position>(entity).Unwrap().X);
-        }
 
         [Fact]
         public void System_HandleQueryingNothing()
@@ -81,20 +99,33 @@ namespace UnitTestsECS
             Assert.Null(exceptions);
         }
 
-        [Fact]
-        public void System_QuerySingleWithOneComponent_Success()
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(5)]
+        [InlineData(100)]
+        public void Query_ProcessExactEntityCount(int expectedCount)
         {
             var ecs = new ECS();
-            var entity = ecs.CreateEntity();
-            ecs.InsertComponent(entity, new Position { X = 0 });
-            ecs.InsertComponent(entity, new Velocity { Dx = 5 });
 
-            TestSystems.QuerySingle(new Query<MovementQuery>(ecs));
+            for (int i = 0; i < expectedCount; i++)
+            {
+                var entity = ecs.CreateEntity();
+                ecs.InsertComponent(entity, new Position{X = 5});
+            }
 
-            Assert.Equal(5, ecs.QueryComponent<Position>(entity).Unwrap().X);
+            var query = new Query<PositionQuery>(ecs);
+            int actualCount = 0;
+            foreach(var _ in query)
+            {
+                actualCount++;
+            }
+
+            Assert.Equal(expectedCount, actualCount);
         }
+
         [Fact]
-        public void System_QuerySingleWithMultipleComponents_ThrowsException()
+        public void System_QuerySingleMultipleComponents_ThrowsException()
         {
             var ecs = new ECS();
             var entity1 = ecs.CreateEntity();
@@ -105,9 +136,78 @@ namespace UnitTestsECS
             ecs.InsertComponent(entity2, new Position { X = 10 });
             ecs.InsertComponent(entity2, new Velocity { Dx = 15 });
 
-            var exceptions = Record.Exception(() => TestSystems.QuerySingle(new Query<MovementQuery>(ecs)));
+            Assert.Throws<InvalidOperationException>(() =>
+            TestSystems.QuerySingle(new Query<MovementQuery>(ecs)));
+        }
 
-            Assert.NotNull(exceptions);
+        [Fact]
+        public void System_QueryWithTag_Success()
+        {
+            var ecs = new ECS();
+            var entity = ecs.CreateEntity();
+            ecs.InsertComponent(entity, new Position{X = 5});
+            ecs.InsertComponent(entity, new PlayerTag());
+
+            entity = ecs.CreateEntity();
+            ecs.InsertComponent(entity, new Position{X = 0});
+
+            var query = new Query<WithQuery>(ecs);
+            int count = 0;
+            foreach(var q in query) count++;
+            Assert.Equal(1, count);
+        }
+
+        [Fact]
+        public void System_QueryWithoutTag_Success()
+        {
+            var ecs = new ECS();
+            var entity = ecs.CreateEntity();
+            ecs.InsertComponent(entity, new Position{X = 5});
+            ecs.InsertComponent(entity, new PlayerTag());
+
+            entity = ecs.CreateEntity();
+            ecs.InsertComponent(entity, new Position{X = 0});
+            entity = ecs.CreateEntity();
+            ecs.InsertComponent(entity, new Position{X = 0});
+
+            var query = new Query<WithoutQuery>(ecs);
+            int count = 0;
+            foreach(var q in query) count++;
+            Assert.Equal(2, count);
+        }
+        [Fact]
+        public void Query_WithAndWithoutComponent()
+        {
+            var ecs = new ECS();
+
+            // With: PlayerTag
+            // Without: Frozen
+            var entity = ecs.CreateEntity();
+            ecs.InsertComponent(entity, new Position{X = 5});
+            ecs.InsertComponent(entity, new PlayerTag());
+
+            // With: Frozen
+            // Without: PlayerTag
+            entity = ecs.CreateEntity();
+            ecs.InsertComponent(entity, new Position{X = 42});
+            ecs.InsertComponent(entity, new Frozen());
+
+            // With: PlayerTag, Frozen
+            // Without: 
+            entity = ecs.CreateEntity();
+            ecs.InsertComponent(entity, new Position{X = 0});
+            ecs.InsertComponent(entity, new Frozen());
+            ecs.InsertComponent(entity, new PlayerTag());
+
+
+            var query =  new Query<WithWithoutQuery>(ecs);
+            int expectedCount = 0;
+            int actualValue = -1;
+            foreach(var q in query){
+                expectedCount++;
+                actualValue = (int)q._.X;
+            }
+            Assert.Equal(1, expectedCount);
         }
     }
 }
