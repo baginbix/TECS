@@ -110,6 +110,8 @@ namespace TECS
             int index = sparse[pageIndex][pageOffset];
             if(index == -1)
                 return  OptionRef<T>.None;
+            if(denseEntities[index].Version != entity.Version)
+                return OptionRef<T>.None;
             ticks[entity.Id] = currentTick;
             return new OptionRef<T>(ref CollectionsMarshal.AsSpan(dense)[index]);
         }
@@ -123,6 +125,8 @@ namespace TECS
             int index = sparse[pageIndex][pageOffset];
             if(index == -1)
                 return  Option<T>.None;
+            if(denseEntities[index].Version != entity.Version)
+                return Option<T>.None;
             return new Option<T>(ref CollectionsMarshal.AsSpan(dense)[index]);
         }
 
@@ -134,7 +138,7 @@ namespace TECS
         {
             int pageIndex = entity.Id >> PAGE_SHIFT;
             int pageOffset = entity.Id & PAGE_MASK;
-            return entity.Id < sparse.Length && 
+            return pageIndex < sparse.Length && 
                    sparse[pageIndex] != null && 
                    sparse[pageIndex][pageOffset] != -1;
         }
