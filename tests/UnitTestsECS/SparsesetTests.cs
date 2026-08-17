@@ -1,12 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Threading.Tasks;
 using TECS;
 using TECS.Query;
-using TECS.Tests;
-using Xunit;
 
 namespace UnitTestsECS
 {
@@ -40,6 +33,22 @@ namespace UnitTestsECS
             }
 
             Assert.Equal(spawnCount, count);
+        }
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(100)]
+        [InlineData(100_000)]
+        public void Insert_AllInserted_ExpectedCount(int expectedCount)
+        {
+            var set = new SparseSet<int>(expectedCount);
+
+            for (int i = 0; i < expectedCount; i++)
+            {
+                set.Add(new Entity(i,0), i, 0);
+            }
+
+            Assert.Equal(expectedCount, set.Size);
         }
     }
 }
