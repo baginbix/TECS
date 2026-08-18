@@ -113,20 +113,6 @@ public partial class App
         return this;
     }
 
-
-    
-    /*
-    This is now source generated to match this signature
-    One is generated for Enter/Update/Exit
-    public App AddSystemOnEnter<TState>(TState state, ISystem system) 
-        where TState : struct, Enum
-    {
-        var stateManager = ecs.GetResource<StateManager<TState>>();
-        stateManager.AddEnterSystem(state, system);
-        return this;
-    }
-    */
-
     public App AddResource(IResource resource) 
     {
         ecs.InsertResource(resource);
@@ -166,10 +152,5 @@ public partial class App
     public void Run()
     {
         _runner.Run(this);
-    }
-
-    public void Stop()
-    {
-        run = false;
     }
 }
