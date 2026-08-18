@@ -51,9 +51,10 @@ namespace UnitTestsECS
         [Without<PlayerTag>]
         public ref struct WithWithoutQuery
         {
-            public ref Position _;
+            public ref Data X;
         }
 
+        public record struct Data(int X);
         // 3. Define the Systems for testing
         public static class TestSystems
         {
@@ -175,39 +176,49 @@ namespace UnitTestsECS
             foreach(var q in query) count++;
             Assert.Equal(2, count);
         }
-        [Fact]
-        public void Query_WithAndWithoutComponent()
+
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(100)]
+        //This one checkes so that paged data is correct
+        [InlineData(5000)]
+        public void Query_WithFrozenAndWithoutPlayerTagComponent_ValidateDataIntegrity(int expectedCount)
         {
             var ecs = new ECS();
+            const int dataValue = 42;
 
-            // With: PlayerTag
-            // Without: Frozen
-            var entity = ecs.CreateEntity();
-            ecs.InsertComponent(entity, new Position{X = 5});
-            ecs.InsertComponent(entity, new PlayerTag());
+            for(int i = 0; i < expectedCount; i++)
+            {
+                // With: PlayerTag
+                // Without: Frozen
+                var entity = ecs.CreateEntity();
+                ecs.InsertComponent(entity, new Data{X = 5});
+                ecs.InsertComponent(entity, new PlayerTag());
 
-            // With: Frozen
-            // Without: PlayerTag
-            entity = ecs.CreateEntity();
-            ecs.InsertComponent(entity, new Position{X = 42});
-            ecs.InsertComponent(entity, new Frozen());
+                // With: Frozen
+                // Without: PlayerTag
+                entity = ecs.CreateEntity();
+                ecs.InsertComponent(entity, new Data{X = dataValue});
+                ecs.InsertComponent(entity, new Frozen());
 
-            // With: PlayerTag, Frozen
-            // Without: 
-            entity = ecs.CreateEntity();
-            ecs.InsertComponent(entity, new Position{X = 0});
-            ecs.InsertComponent(entity, new Frozen());
-            ecs.InsertComponent(entity, new PlayerTag());
+                // With: PlayerTag, Frozen
+                // Without: 
+                entity = ecs.CreateEntity();
+                ecs.InsertComponent(entity, new Data{X = 0});
+                ecs.InsertComponent(entity, new Frozen());
+                ecs.InsertComponent(entity, new PlayerTag());
+                
+            }
 
 
             var query =  new Query<WithWithoutQuery>(ecs);
-            int expectedCount = 0;
-            int actualValue = -1;
+            int actualCount = 0;
             foreach(var q in query){
-                expectedCount++;
-                actualValue = (int)q._.X;
+                actualCount++;
+                Assert.Equal(dataValue, q.X.X);
             }
-            Assert.Equal(1, expectedCount);
+            Assert.Equal(expectedCount, actualCount);
         }
     }
 }

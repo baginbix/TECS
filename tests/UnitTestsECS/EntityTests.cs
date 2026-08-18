@@ -71,5 +71,25 @@ namespace UnitTestsECS
             ecs.InsertComponent(freshEntity, new Position{X = 42});
             Assert.True(ecs.QueryComponent<Position>(staleHandle).IsNone);
         }
+
+        [Fact]
+        public void BulkCreateAndDestroy_MaintainsCorrectActiveCount()
+        {
+            var ecs = new ECS();
+            var activeEntities = new List<Entity>();
+
+            for(int i = 0; i < 1_000; i++)
+            {
+                activeEntities.Add(ecs.CreateEntity());
+            }
+
+            for(int i = activeEntities.Count-1; i >= 0; i -= 2)
+            {
+                ecs.DestroyEntity(activeEntities[i]);
+                activeEntities.RemoveAt(i);
+            }
+
+            Assert.All(activeEntities, entity => Assert.True(ecs.IsEntityAlive(entity)));
+        }
     }
 }
