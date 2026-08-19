@@ -4,11 +4,11 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-    <Project Path="sandbox/sandbox.csproj" />
   <Folder Name="/src/" />
   <Folder Name="/src/examples/">
     <Project Path="src/examples/Basics/Basics.csproj" />
     <Project Path="src/examples/Breakout/Breakout.csproj" />
+    
   </Folder>
   <Folder Name="/src/TECS/">
     <Project Path="src/TECS/TECS.csproj" />

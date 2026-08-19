@@ -60,9 +60,9 @@ public partial class App
 
     public App AddState<TState>(TState startState) where TState : struct, Enum
     {
-        var stateManger = new StateManager<TState>(startState);
-        //systemManager.AddStateManager(stateManger)
-        ecs.InsertResource(stateManger);
+        var stateManager = new StateManager<TState>(startState);
+        //systemManager.AddStateManager(stateManager)
+        ecs.InsertResource(stateManager);
         return this;
     }
 

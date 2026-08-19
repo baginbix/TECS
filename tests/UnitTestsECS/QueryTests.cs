@@ -51,7 +51,7 @@ namespace UnitTestsECS
         [Without<PlayerTag>]
         public ref struct WithWithoutQuery
         {
-            public ref Data X;
+            public ref Data Data;
         }
 
         public record struct Data(int X);
@@ -216,7 +216,7 @@ namespace UnitTestsECS
             int actualCount = 0;
             foreach(var q in query){
                 actualCount++;
-                Assert.Equal(dataValue, q.X.X);
+                Assert.Equal(dataValue, q.Data.X);
             }
             Assert.Equal(expectedCount, actualCount);
         }
