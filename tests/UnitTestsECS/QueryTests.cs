@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Security.AccessControl;
 using TECS;
 using TECS.Commands;
 using TECS.Query; 
@@ -54,6 +55,13 @@ namespace UnitTestsECS
             public ref Data Data;
         }
 
+        [Query]
+        [Changed<Position>]
+        public ref struct ChangedQuery
+        {
+            public ref Position pos;
+        }
+
         public record struct Data(int X);
         // 3. Define the Systems for testing
         public static class TestSystems
@@ -95,7 +103,7 @@ namespace UnitTestsECS
             var ecs = new ECS();
             var entity = ecs.CreateEntity();
 
-            var exceptions = Record.Exception(() => TestSystems.QueryNothing(new Query<NothingQuery>(ecs)));
+            var exceptions = Record.Exception(() => TestSystems.QueryNothing(new Query<NothingQuery>(ecs, 0)));
 
             Assert.Null(exceptions);
         }
@@ -115,7 +123,7 @@ namespace UnitTestsECS
                 ecs.InsertComponent(entity, new Position{X = 5});
             }
 
-            var query = new Query<PositionQuery>(ecs);
+            var query = new Query<PositionQuery>(ecs, 0);
             int actualCount = 0;
             foreach(var _ in query)
             {
@@ -138,7 +146,7 @@ namespace UnitTestsECS
             ecs.InsertComponent(entity2, new Velocity { Dx = 15 });
 
             Assert.Throws<InvalidOperationException>(() =>
-            TestSystems.QuerySingle(new Query<MovementQuery>(ecs)));
+            TestSystems.QuerySingle(new Query<MovementQuery>(ecs, 0)));
         }
 
         [Fact]
@@ -152,7 +160,7 @@ namespace UnitTestsECS
             entity = ecs.CreateEntity();
             ecs.InsertComponent(entity, new Position{X = 0});
 
-            var query = new Query<WithQuery>(ecs);
+            var query = new Query<WithQuery>(ecs, 0);
             int count = 0;
             foreach(var q in query) count++;
             Assert.Equal(1, count);
@@ -171,7 +179,7 @@ namespace UnitTestsECS
             entity = ecs.CreateEntity();
             ecs.InsertComponent(entity, new Position{X = 0});
 
-            var query = new Query<WithoutQuery>(ecs);
+            var query = new Query<WithoutQuery>(ecs, 0);
             int count = 0;
             foreach(var q in query) count++;
             Assert.Equal(2, count);
@@ -212,13 +220,39 @@ namespace UnitTestsECS
             }
 
 
-            var query =  new Query<WithWithoutQuery>(ecs);
+            var query =  new Query<WithWithoutQuery>(ecs, 0);
             int actualCount = 0;
             foreach(var q in query){
                 actualCount++;
                 Assert.Equal(dataValue, q.Data.X);
             }
             Assert.Equal(expectedCount, actualCount);
+        }
+
+        [Fact]
+        public void Query_ChangedPosition_OnlyRunWhenChanged()
+        {
+            ECS world = new();
+            CommandBuffer cmd = new();
+            cmd.SpawnEntity().With(new Position{X = 42});
+            cmd.SpawnEntity().With(new Position{X = 420});
+            cmd.Flush(world);
+            var positions = world.GetSparseSet<Position>();
+            //First half have been changed
+            for(int i = 0; i < positions.GetEntities().Count/2; i++)
+            {
+                positions.GetLastTicks()[i] = 20;
+            }
+
+            var query = new Query<ChangedQuery>(world, 10);
+            int actualFound = 0;
+            foreach(var q in query)
+            {
+                Assert.Equal(42, q.pos.X);
+                actualFound++;
+            }
+
+            Assert.Equal(1,actualFound);
         }
     }
 }

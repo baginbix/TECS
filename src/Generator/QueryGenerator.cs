@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -111,7 +112,7 @@ public class QueryGenerator : IIncrementalGenerator
             {
                 if (attr.Name is IdentifierNameSyntax nameSyntax)
                 {
-                    if (nameSyntax.Identifier.Text is "Query" or "QueryAttribute")
+                    if (nameSyntax.Identifier.Text is "Query")
                         isQuery = true;
                 }
                 else if (attr.Name is GenericNameSyntax genericName)
@@ -124,7 +125,10 @@ public class QueryGenerator : IIncrementalGenerator
                     else if (attrName == "Without")
                         withoutTypes.Add(typeArg);
                     else if (attrName == "Changed")
+                    {
                         changedTypes.Add(typeArg);
+                        Console.WriteLine($"Typeargs for changed: {typeArg}");
+                    }
                 }
             }
         }
@@ -214,7 +218,7 @@ public class QueryGenerator : IIncrementalGenerator
                     {{writeAccess}}
                     public static {{model.StructName}}Enumerator GetEnumerator(this Query<{{model.StructName}}> query)
                     {
-                        return new {{model.StructName}}Enumerator(query.World);
+                        return new {{model.StructName}}Enumerator(query.World, query.SystemTick);
                     }
 
                     {{singleMethod}}
@@ -471,13 +475,7 @@ public class QueryGenerator : IIncrementalGenerator
             {
                 if (driver == other)
                     continue;
-                string changedType = model.ChangedTypes.Find(x => x == model.Fields[other].Type);
-                if (changedType != "")
-                {
-                    sb.AppendLine(
-                        $"            if(Unsafe.Add(ref _ticks{other}, _idx{other}) == _systemTick) continue;"
-                    );
-                }
+                
 
                 sb.AppendLine(
                     $$"""
@@ -493,6 +491,15 @@ public class QueryGenerator : IIncrementalGenerator
                       _idx{{driver}} = _index;
                     """
                 );
+
+                var changedType = model.ChangedTypes.Contains(model.Fields[other].Type);
+                model.ChangedTypes.ForEach( c => sb.AppendLine($"// {c}"));
+                if (changedType)
+                {
+                    sb.AppendLine(
+                        $"            if(Unsafe.Add(ref _ticks{other}, _idx{other}) <= _systemTick) continue;"
+                    );
+                }
                 /*
                     sb.AppendLine(
                     $"                        if(pageIndex >= _sparse{other}.Length) continue;"

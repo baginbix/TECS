@@ -26,7 +26,7 @@ namespace UnitTestsECS
 
             // Assert all 5000 entities can be iterated successfully
             int count = 0;
-            var query = new Query<QueryPos>(ecs);
+            var query = new Query<QueryPos>(ecs,0);
             foreach (var item in query)
             {
                 count++;

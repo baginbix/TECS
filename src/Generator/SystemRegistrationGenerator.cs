@@ -143,12 +143,11 @@ public class SystemRegistrationGenerator : IIncrementalGenerator
                     ", ",
                     parameters.Select(p => p.GenerateArgumentCode())
                 );
-                callArguments += ", SystemTick";
 
                 // 5. Append Delegate & Binding Definition
                 delegatesAndBindingsBuilder.AppendLine(
                     $$"""
-                        public delegate void SystemDelegate_{{uniqueId}}({{delegateParams}}, uint systemTick);
+                        public delegate void SystemDelegate_{{uniqueId}}({{delegateParams}});
 
                         public class SystemBinding_{{uniqueId}} : SystemBinding
                         {
@@ -160,7 +159,7 @@ public class SystemRegistrationGenerator : IIncrementalGenerator
                                 {{readsWritesBuilder.ToString().TrimEnd()}}
                             }
 
-                            public override void Run(ECS ecs, CommandBuffer cmd)
+                            public override void Run(ECS ecs, CommandBuffer cmd, uint systemTick)
                             {
                                 {{setupStatements}}
                                 _func({{callArguments}});

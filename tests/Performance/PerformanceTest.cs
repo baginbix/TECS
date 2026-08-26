@@ -142,7 +142,7 @@ public class EcsBenchmarks
     {
         // Benchmarks the entire App system runner pipeline!
         //app.Run();
-        var query = new Query<Query1>(ecs);
+        var query = new Query<Query1>(ecs, 0);
         foreach (var item in query)
         {
             item.p.X += 1;
@@ -153,7 +153,7 @@ public class EcsBenchmarks
     [Benchmark]
     public void IterateOneComponent()
     {
-        var query = new Query<Query1>(ecs);
+        var query = new Query<Query1>(ecs, 0);
 
         foreach (var item in query)
         {
@@ -165,7 +165,7 @@ public class EcsBenchmarks
     [Benchmark]
     public void IterateTwoComponents()
     {
-        var query = new Query<Query2>(ecs);
+        var query = new Query<Query2>(ecs, 0);
 
         foreach (var item in query)
         {
@@ -177,7 +177,7 @@ public class EcsBenchmarks
     [Benchmark]
     public void IterateThreeComponents()
     {
-        var query = new Query<Query3>(ecs);
+        var query = new Query<Query3>(ecs, 0);
 
         foreach (var item in query)
         {
@@ -190,7 +190,7 @@ public class EcsBenchmarks
     [Benchmark]
     public void IterateWithFilter()
     {
-        var query = new Query<QueryWith>(ecs);
+        var query = new Query<QueryWith>(ecs, 0);
 
         foreach (var item in query)
         {
@@ -202,7 +202,7 @@ public class EcsBenchmarks
     [Benchmark]
     public void IterateWithoutFilter()
     {
-        var query = new Query<QueryWithout>(ecs);
+        var query = new Query<QueryWithout>(ecs, 0);
 
         foreach (var item in query)
         {
@@ -214,7 +214,7 @@ public class EcsBenchmarks
     [Benchmark]
     public void IterateWithAndWithoutFilter()
     {
-        var query = new Query<QueryWithAndWithout>(ecs);
+        var query = new Query<QueryWithAndWithout>(ecs, 0);
 
         foreach (var item in query)
         {

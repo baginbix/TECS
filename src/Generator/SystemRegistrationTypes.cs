@@ -31,7 +31,7 @@ public record QueryParam(string ParameterName, int Index, string StructType)
         "Query_" + StructType.Replace("global::", "").Replace(".", "_");
 
     public override string GenerateArgumentCode() =>
-        $"new global::TECS.Query.Query<{StructType}>(ecs, SysteTick)";
+        $"new global::TECS.Query.Query<{StructType}>(ecs, systemTick)";
 
     public override string? GetReadsCode() =>
         $"readsList.AddRange({StructType}Extensions.GetReads);";

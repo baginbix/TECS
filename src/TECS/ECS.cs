@@ -28,7 +28,7 @@ namespace TECS
 
     public class ECS : IEngine
     {
-        public ulong GlobalTick { get; private set; } = 0;
+        public ulong GlobalTick { get; private set; } = 1;
         EntityManager entityManager;
         ISparseSet[] components;
 
