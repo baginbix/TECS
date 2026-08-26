@@ -9,12 +9,23 @@ using TECS.Query; // Ensure your Query namespace is included
 
 namespace PerformanceTests;
 
-public struct Position { public float X; public float Y; }
-public struct Velocity { public float Dx; public float Dy; }
+public struct Position
+{
+    public float X;
+    public float Y;
+}
+
+public struct Velocity
+{
+    public float Dx;
+    public float Dy;
+}
+
 public record struct Component3(float Value1, float Value2, float Value3);
 
 // --- Tag Components for Filtering ---
 public struct IsPlayer { }
+
 public struct IsFrozen { }
 
 // --- Source-Generated Queries ---
@@ -76,7 +87,7 @@ public static class BenchmarkSystems
 }
 
 // This attribute tells BDN to track every single byte allocated
-[MemoryDiagnoser] 
+[MemoryDiagnoser]
 [DisassemblyDiagnoser(printSource: true, maxDepth: 2)]
 public class EcsBenchmarks
 {
@@ -84,7 +95,7 @@ public class EcsBenchmarks
     private ECS ecs;
     private CommandBuffer cmd;
 
-    [Params(100_000)]
+    [Params(1_000_000)]
     public int EntityCount { get; set; }
 
     [GlobalSetup]
@@ -92,27 +103,34 @@ public class EcsBenchmarks
     {
         // Initialize the App, and grab its internal ECS for the other benchmarks
         app = new App();
-        ecs = app.Ecs; 
+        ecs = new ECS();
         cmd = new CommandBuffer();
-        
+
         for (int i = 0; i < EntityCount; i++)
         {
             var e = cmd.SpawnEntity()
                 .With(new Position { X = 0, Y = 0 })
                 .With(new Velocity { Dx = 1f, Dy = 1f })
-                .With(new Component3 { Value1 = 1f, Value2 = 1f, Value3 = 1f });
+                .With(
+                    new Component3
+                    {
+                        Value1 = 1f,
+                        Value2 = 1f,
+                        Value3 = 1f,
+                    }
+                );
 
             if (i % 2 == 0) // 50% of entities
             {
                 cmd.InsertComponent(e, new IsPlayer());
             }
-            
+
             if (i % 4 == 0) // 25% of entities
             {
                 cmd.InsertComponent(e, new IsFrozen());
             }
         }
-        
+
         cmd.Flush(ecs);
 
         // Register the benchmark system
@@ -123,14 +141,20 @@ public class EcsBenchmarks
     public void IterateSystemOneComponent()
     {
         // Benchmarks the entire App system runner pipeline!
-        app.Run(); 
+        //app.Run();
+        var query = new Query<Query1>(ecs);
+        foreach (var item in query)
+        {
+            item.p.X += 1;
+            item.p.Y += 1;
+        }
     }
 
     [Benchmark]
     public void IterateOneComponent()
     {
         var query = new Query<Query1>(ecs);
-        
+
         foreach (var item in query)
         {
             item.p.X += 1;
@@ -141,8 +165,8 @@ public class EcsBenchmarks
     [Benchmark]
     public void IterateTwoComponents()
     {
-        var query = new Query<Query2>(ecs);  
-        
+        var query = new Query<Query2>(ecs);
+
         foreach (var item in query)
         {
             item.p.X += item.v.Dx;
@@ -153,8 +177,8 @@ public class EcsBenchmarks
     [Benchmark]
     public void IterateThreeComponents()
     {
-        var query = new Query<Query3>(ecs);  
-        
+        var query = new Query<Query3>(ecs);
+
         foreach (var item in query)
         {
             item.p.X += item.v.Dx * item.c.Value1;
@@ -167,7 +191,7 @@ public class EcsBenchmarks
     public void IterateWithFilter()
     {
         var query = new Query<QueryWith>(ecs);
-        
+
         foreach (var item in query)
         {
             item.p.X += 1;
@@ -179,7 +203,7 @@ public class EcsBenchmarks
     public void IterateWithoutFilter()
     {
         var query = new Query<QueryWithout>(ecs);
-        
+
         foreach (var item in query)
         {
             item.p.X += 1;
@@ -191,7 +215,7 @@ public class EcsBenchmarks
     public void IterateWithAndWithoutFilter()
     {
         var query = new Query<QueryWithAndWithout>(ecs);
-        
+
         foreach (var item in query)
         {
             item.p.X += 1;
@@ -207,7 +231,7 @@ public class EcsBenchmarks
 
         var posSpan = MemoryMarshal.Cast<Position, float>(positionSet);
         var velSpan = MemoryMarshal.Cast<Velocity, float>(velocitySet);
-        
+
         int i = 0;
         for (; i < posSpan.Length; i += 8)
         {
@@ -224,7 +248,7 @@ public class EcsBenchmarks
             for (; i < posSpan.Length; i += 2)
             {
                 posSpan[i] += velSpan[i];
-                posSpan[i+1] += velSpan[i+1];
+                posSpan[i + 1] += velSpan[i + 1];
             }
         }
     }

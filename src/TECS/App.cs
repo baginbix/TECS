@@ -2,25 +2,27 @@ using System.Diagnostics;
 using TECS.Commands;
 using TECS.Plugins;
 using TECS.Query;
+using TECS.Resources;
 using TECS.Runner;
 using TECS.Scheduler;
 using TECS.Systems;
-using TECS.Resources;
 
 namespace TECS;
 
-public delegate void SystemDelegate<T>(Query<T> query) where T : allows ref struct;
+public delegate void SystemDelegate<T>(Query<T> query)
+    where T : allows ref struct;
 
 public abstract class SystemBinding
 {
     public Type[] Reads { get; protected set; } = Array.Empty<Type>();
-    public Type[] Writes { get; protected set;} = Array.Empty<Type>();
-    public abstract void Run(ECS ecs, CommandBuffer cmd);
+    public Type[] Writes { get; protected set; } = Array.Empty<Type>();
+    public abstract void Run(ECS ecs, CommandBuffer cmd, uint lastRunTick);
 }
 
 public partial class App
 {
     internal ECS ecs;
+
     //private SystemManager systemManager;
 
     private bool run = true;
@@ -52,13 +54,14 @@ public partial class App
         return this;
     }
 
-    public App SetRunner(Action<App> runner) 
+    public App SetRunner(Action<App> runner)
     {
         _runner = new LambdaRunner(runner);
         return this;
     }
 
-    public App AddState<TState>(TState startState) where TState : struct, Enum
+    public App AddState<TState>(TState startState)
+        where TState : struct, Enum
     {
         var stateManager = new StateManager<TState>(startState);
         //systemManager.AddStateManager(stateManager)
@@ -66,7 +69,8 @@ public partial class App
         return this;
     }
 
-    public App AddPlugin<TPlugin>() where TPlugin : IPlugin, new()
+    public App AddPlugin<TPlugin>()
+        where TPlugin : IPlugin, new()
     {
         IPlugin plugin = new TPlugin();
         plugin.Build(this);
@@ -86,34 +90,38 @@ public partial class App
         return this;
     }
 
-    public App AddSystemOnEnter<TState>(TState state, SystemBinding binding) where TState : struct, Enum
+    public App AddSystemOnEnter<TState>(TState state, SystemBinding binding)
+        where TState : struct, Enum
     {
         var stateManager = ecs.GetResource<StateManager<TState>>();
         stateManager.AddEnterSystem(state, binding);
         return this;
     }
 
-    public App AddSystemOnUpdate<TState>(TState state, SystemBinding binding) where TState : struct, Enum
+    public App AddSystemOnUpdate<TState>(TState state, SystemBinding binding)
+        where TState : struct, Enum
     {
         var stateManager = ecs.GetResource<StateManager<TState>>();
         stateManager.AddUpdateSystem(state, binding);
         return this;
     }
 
-    public App AddSystemOnExit<TState>(TState state, SystemBinding binding) where TState : struct, Enum
+    public App AddSystemOnExit<TState>(TState state, SystemBinding binding)
+        where TState : struct, Enum
     {
         var stateManager = ecs.GetResource<StateManager<TState>>();
         stateManager.AddExitSystem(state, binding);
         return this;
     }
-    
-    public App AddResource<TResource>(TResource resource) where TResource : IResource
+
+    public App AddResource<TResource>(TResource resource)
+        where TResource : IResource
     {
         ecs.InsertResource(resource);
         return this;
     }
 
-    public App AddResource(IResource resource) 
+    public App AddResource(IResource resource)
     {
         ecs.InsertResource(resource);
         return this;
@@ -127,13 +135,13 @@ public partial class App
 
     public void RunLoop()
     {
-        if(Initialized)
+        if (Initialized)
         {
             throw new Exception("App is already running!");
         }
         Time.Time timeResource = new Time.Time();
         ecs.InsertResource(timeResource);
-        
+
         //systemManager.OnStart();
         Initialized = true;
         Stopwatch stopwatch = Stopwatch.StartNew();
@@ -141,10 +149,10 @@ public partial class App
         while (run)
         {
             long currentTick = stopwatch.ElapsedTicks;
-            timeResource.DeltaTime = (float)(currentTick - lastTick)/Stopwatch.Frequency;
+            timeResource.DeltaTime = (float)(currentTick - lastTick) / Stopwatch.Frequency;
             timeResource.TotalTime = (float)stopwatch.Elapsed.TotalSeconds;
             lastTick = currentTick;
-            
+
             Run();
         }
     }

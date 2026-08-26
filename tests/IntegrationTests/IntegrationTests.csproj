@@ -1,10 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,27 +18,15 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
+    <!-- 1. The standard reference to the TECS engine -->
     <ProjectReference Include="..\..\src\TECS\TECS.csproj" />
 
-    <!--This runs the generator to build your AddSystem extensions -->
+    <!-- 2. The analyzer reference for the Source Generator -->
     <ProjectReference Include="..\..\src\Generator\Generator.csproj" 
                       OutputItemType="Analyzer" 
-                      ReferenceOutputAssembly="false" />
-  </ItemGroup>
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+</ItemGroup>
 
 
-  <PropertyGroup>
-    <!--Tells Roslyn to save generated files to disk -->
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    
-    <!-- Specifies the folder path where files will be saved -->
-    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <!-- Prevents duplicate symbol errors (CS0101) by telling 
-         the compiler NOT to compile the files sitting on disk, 
-         since the generator will inject them in-memory during build -->
-    <Compile Remove="Generated\**" />
-  </ItemGroup>
 </Project>

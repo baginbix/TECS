@@ -1,18 +1,15 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using TECS.Systems;
 
 namespace TECS
 {
     public class SystemNode
     {
-        public SystemBinding System;
+        public SystemItem System;
         public List<SystemNode> Dependents;
         public int InitialDependencyCount;
         public int CurrentDependencyCount;
 
-        public SystemNode(SystemBinding system)
+        public SystemNode(SystemItem system)
         {
             System = system;
             Dependents = new();

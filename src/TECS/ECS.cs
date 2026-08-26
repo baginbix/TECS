@@ -1,23 +1,29 @@
-using TECS.Queries;
 using TECS.Components;
 using TECS.Event;
 using TECS.Event;
+using TECS.Queries;
 using TECS.Resources;
+using TECS.Systems;
 
 namespace TECS
 {
-
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
-    public class ECSSystemAttribute: Attribute{}
+    public class ECSSystemAttribute : Attribute { }
 
     public interface IEngine
     {
-        EventWriter<TEvent> GetEventWriter<TEvent>() where TEvent : struct;
-        EventReader<TEvent> GetEventReader<TEvent>() where TEvent : struct;
-        OptionRef<T> QueryComponent<T>(Entity entity) where T: struct;
-        Option<T> QueryReadonlyComponent<T>(Entity entity) where T : struct;
-        T GetResource<T>() where T:IResource;
-        T GetTResourceMut<T>() where T:IResource;
+        EventWriter<TEvent> GetEventWriter<TEvent>()
+            where TEvent : struct;
+        EventReader<TEvent> GetEventReader<TEvent>()
+            where TEvent : struct;
+        OptionRef<T> QueryComponent<T>(Entity entity)
+            where T : struct;
+        Option<T> QueryReadonlyComponent<T>(Entity entity)
+            where T : struct;
+        T GetResource<T>()
+            where T : IResource;
+        T GetTResourceMut<T>()
+            where T : IResource;
     }
 
     public class ECS : IEngine
@@ -28,18 +34,19 @@ namespace TECS
 
         Dictionary<Bitset, SparseSet<Entity>> groups;
 
-
         private Bitset[] entityMasks;
 
         Dictionary<Type, ResourceStorage> resources;
 
         Dictionary<Type, IEventWriter> cachedWriters;
-        Dictionary<(Type systemType,Type eventType), IEventReader> cachedReaders;
+        Dictionary<(Type systemType, Type eventType), IEventReader> cachedReaders;
         EventManager eventManager = new();
 
-        [ThreadStatic]private static Type activeSystem;
-        [ThreadStatic]private static ulong currentSystemLastTick = 0;
-        
+        [ThreadStatic]
+        private static Type activeSystem;
+
+        [ThreadStatic]
+        private static ulong currentSystemLastTick = 0;
 
         bool stop = false;
 
@@ -53,15 +60,17 @@ namespace TECS
             resources = new();
             cachedWriters = new Dictionary<Type, IEventWriter>();
             cachedReaders = new Dictionary<(Type systemType, Type eventType), IEventReader>();
-
         }
 
         public void NextTick()
         {
             GlobalTick++;
         }
+
         public void SetActiveSystem(Type system) => activeSystem = system;
+
         public void SetLastSystemTick(ulong tick) => currentSystemLastTick = tick;
+
         public Entity CreateEntity()
         {
             Entity entity = entityManager.GetId();
@@ -78,48 +87,62 @@ namespace TECS
             return entityManager.IsAlive(entity);
         }
 
-
-        public void InsertResource<T>(T newResource) where T:IResource
+        public void InsertResource<T>(T newResource)
+            where T : IResource
         {
             resources.Add(typeof(T), new ResourceStorage(newResource));
         }
-        public void InsertResource<T>() where T:IResource, new()
+
+        public void InsertResource<T>()
+            where T : IResource, new()
         {
             resources.Add(typeof(T), new ResourceStorage(new T()));
         }
 
-        public T GetResource<T>() where T :IResource
+        public T GetResource<T>()
+            where T : IResource
         {
-            #if DEBUG
-            if(resources.TryGetValue(typeof(T),  out var value))
+#if DEBUG
+            if (resources.TryGetValue(typeof(T), out var value))
             {
                 return (T)value.GetResource();
             }
-            throw new InvalidOperationException($"The resource of type {typeof(T).Name} has not been added to the ECS!");
-            # else
+            throw new InvalidOperationException(
+                $"The resource of type {typeof(T).Name} has not been added to the ECS!"
+            );
+# else
             return (T)resources[typeof(T)].GetResource();
-            #endif
+#endif
         }
 
-        public T GetTResourceMut<T>() where T :IResource
+        public T GetTResourceMut<T>()
+            where T : IResource
         {
-            #if DEBUG
-            if(resources.TryGetValue(typeof(T),  out var value))
+#if DEBUG
+            if (resources.TryGetValue(typeof(T), out var value))
             {
                 value.UpdateLastTick((uint)GlobalTick);
                 return (T)value.GetResource();
             }
-            throw new InvalidOperationException($"The resource of type {typeof(T).Name} has not been added to the ECS!");
-            # else
+            throw new InvalidOperationException(
+                $"The resource of type {typeof(T).Name} has not been added to the ECS!"
+            );
+# else
             var value = resources[typeof(T)];
             value.UpdateLastTick((uint)GlobalTick);
             return (T)value.GetResource();
-            #endif
+#endif
         }
 
+        /*
+          public StateManager<T> GetState<T>()
+              where T : IResource
+          {
+              return (StateManager<T>)resources[typeof(StateManager<T>)].GetResource();
+          }*/
 
-
-        public void InsertComponent<T>(Entity entityId, T component) where T : struct
+        public void InsertComponent<T>(Entity entityId, T component)
+            where T : struct
         {
             int typeId = ComponentID<T>.Value;
             SparseSet<T> set = GetOrCreateSet<T>();
@@ -128,7 +151,8 @@ namespace TECS
             entityMasks[entityId.Id].SetBit(typeId);
         }
 
-        public SparseSet<T> GetOrCreateSet<T>() where T : struct
+        public SparseSet<T> GetOrCreateSet<T>()
+            where T : struct
         {
             int typeID = ComponentID<T>.Value;
             if (typeID >= components.Length)
@@ -144,25 +168,26 @@ namespace TECS
             return (SparseSet<T>)components[typeID];
         }
 
-        public List<T> QueryComponent<T>() where T : struct
+        public List<T> QueryComponent<T>()
+            where T : struct
         {
             return GetOrCreateSet<T>().GetDense();
         }
 
-        public EntityQueryData<T,E,K> QueryEntity<T,E,K>(Entity entity)
-        where T:struct
-        where E:struct
-        where K:struct
+        public EntityQueryData<T, E, K> QueryEntity<T, E, K>(Entity entity)
+            where T : struct
+            where E : struct
+            where K : struct
         {
             var optT = GetOrCreateSet<T>().GetValue(entity, (uint)GlobalTick);
             var optE = GetOrCreateSet<E>().GetValue(entity, (uint)GlobalTick);
             var optK = GetOrCreateSet<K>().GetValue(entity, (uint)GlobalTick);
 
-            if(optT.IsNone || optE.IsNone || optK.IsNone)
+            if (optT.IsNone || optE.IsNone || optK.IsNone)
             {
-                return EntityQueryData<T,E,K>.None;
+                return EntityQueryData<T, E, K>.None;
             }
-            EntityQueryData<T,E,K> data = new( 
+            EntityQueryData<T, E, K> data = new(
                 ref optT.Unwrap(),
                 ref optE.Unwrap(),
                 ref optK.Unwrap()
@@ -183,46 +208,52 @@ namespace TECS
             }
 
             entityMasks[entity.Id].ClearBits();
-            
+
             //Release ID back to EntityManager
             entityManager.Free(entity);
         }
 
-        public void RemoveComponent<T>(Entity entityId) where T : struct
+        public void RemoveComponent<T>(Entity entityId)
+            where T : struct
         {
             SparseSet<T> set = GetOrCreateSet<T>();
             set.Remove(entityId);
             entityMasks[entityId.Id].ClearBit(ComponentID<T>.Value);
         }
 
-
-        public OptionRef<T> QueryComponent<T>(Entity entity) where T:struct
+        public OptionRef<T> QueryComponent<T>(Entity entity)
+            where T : struct
         {
             var set = GetOrCreateSet<T>();
-            return  set.GetValue(entity, (uint)GlobalTick);
+            return set.GetValue(entity, (uint)GlobalTick);
         }
 
-        public Option<T> QueryReadonlyComponent<T>(Entity entity) where T : struct
+        public Option<T> QueryReadonlyComponent<T>(Entity entity)
+            where T : struct
         {
             return GetOrCreateSet<T>().GetReadonlyValue(entity);
         }
 
-        public SparseSet<T> GetSparseSet<T>() where T: struct => GetOrCreateSet<T>();
+        public SparseSet<T> GetSparseSet<T>()
+            where T : struct => GetOrCreateSet<T>();
 
-        public List<T> GetComponentList<T>() where T : struct
+        public List<T> GetComponentList<T>()
+            where T : struct
         {
             return GetOrCreateSet<T>().GetDense();
         }
 
         [Obsolete("This method had been depracated. Use ECS.GetEventWriter()")]
-        internal void SendEvent<TEvent>(in TEvent @event) where TEvent: struct
+        internal void SendEvent<TEvent>(in TEvent @event)
+            where TEvent : struct
         {
             eventManager.SendEvent<TEvent>(in @event);
         }
 
-        public EventWriter<TEvent> GetEventWriter<TEvent>() where TEvent:struct
+        public EventWriter<TEvent> GetEventWriter<TEvent>()
+            where TEvent : struct
         {
-            if(!cachedWriters.TryGetValue(typeof(TEvent), out var writer))
+            if (!cachedWriters.TryGetValue(typeof(TEvent), out var writer))
             {
                 writer = new EventWriter<TEvent>(eventManager);
                 cachedWriters.Add(typeof(TEvent), writer);
@@ -230,14 +261,15 @@ namespace TECS
             return (EventWriter<TEvent>)writer;
         }
 
-        public EventReader<TEvent> GetEventReader<TEvent>() where TEvent: struct
+        public EventReader<TEvent> GetEventReader<TEvent>()
+            where TEvent : struct
         {
             if (!cachedReaders.TryGetValue((activeSystem, typeof(TEvent)), out var reader))
             {
                 reader = new EventReader<TEvent>(eventManager);
                 cachedReaders.Add((activeSystem, typeof(TEvent)), reader);
             }
-             
+
             return (EventReader<TEvent>)reader;
         }
 
@@ -245,6 +277,5 @@ namespace TECS
         {
             eventManager.Flush();
         }
-
     }
-} 
+}

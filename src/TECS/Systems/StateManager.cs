@@ -36,7 +36,7 @@ public class StateManager<TState> :IStateManager,IResource where TState: struct,
     public void Initialize(ECS ecs, ref CommandBuffer cmd)
     {
         foreach(var sys in onEnter[CurrentState])
-            sys.Run(ecs, cmd);
+            sys.Run(ecs, cmd,0);
     }
     
     public TState CurrentState => activeStates.Peek();
@@ -61,7 +61,7 @@ public class StateManager<TState> :IStateManager,IResource where TState: struct,
         TState newState = nextState.Value;
 
         foreach(var system in onExit[oldState]) 
-            system.Run(ecs, cmd);
+            system.Run(ecs, cmd, 0);
 
         activeStates.Pop();
         activeStates.Push(newState);
@@ -70,14 +70,14 @@ public class StateManager<TState> :IStateManager,IResource where TState: struct,
         nextState = default;
 
         foreach(var sys in onEnter[newState])
-            sys.Run(ecs, cmd);
+            sys.Run(ecs, cmd, 0);
     }
 
     public void RunActiveState(ECS ecs, ref CommandBuffer cmd)
     {
         foreach (var sys in onUpdate[CurrentState])
         {
-            sys.Run(ecs, cmd);
+            sys.Run(ecs, cmd, 0);
         }
     }
 }

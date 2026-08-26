@@ -14,24 +14,21 @@ namespace TECS.Scheduler
         private readonly Dictionary<SystemPhase, List<SystemItem>> _systems = new();
         private bool _isDirty = true;
         private readonly Dictionary<SystemPhase, List<SystemNode>> _graph = new();
+
         public StandardSchedular()
         {
             _executor = new MultiThreadExecutor();
             foreach (SystemPhase phase in Enum.GetValues(typeof(SystemPhase)))
             {
-                _systems[phase] = new ();
+                _systems[phase] = new();
             }
         }
 
         public void SetExecutor(IExecutor executor) => _executor = executor;
- 
+
         public void AddSystem(SystemBinding system, SystemPhase stage)
         {
-            _systems[stage].Add(new()
-            {
-                System = system,
-                LastRunTick =  0
-            });
+            _systems[stage].Add(new() { System = system, LastRunTick = 0 });
             _isDirty = true;
         }
 
@@ -51,22 +48,22 @@ namespace TECS.Scheduler
         private List<SystemNode> BuildGraph(List<SystemItem> systems)
         {
             var nodes = new List<SystemNode>();
-            foreach(var sys in systems)
+            foreach (var sys in systems)
             {
-                nodes.Add(new SystemNode(sys.System));
+                nodes.Add(new SystemNode(sys));
             }
 
-            for(int i = 0; i < nodes.Count; i++)
+            for (int i = 0; i < nodes.Count; i++)
             {
                 SystemNode current = nodes[i];
-                
-                for(int j = 0; j < i; j++)
+
+                for (int j = 0; j < i; j++)
                 {
                     SystemNode previous = nodes[j];
 
                     //TODO: Since I reworked how Queries and Systems are created and added
                     // I need to add back Read/Write for my systems
-                    if(HasDependency(current.System, previous.System))
+                    if (HasDependency(current.System.System, previous.System.System))
                     {
                         current.InitialDependencyCount++;
 
@@ -80,13 +77,13 @@ namespace TECS.Scheduler
 
         private bool HasDependency(SystemBinding current, SystemBinding previous)
         {
-            bool writeOverlap = current.Writes.Intersect(previous.Reads).Any() || 
-                                current.Writes.Intersect(previous.Writes).Any();
+            bool writeOverlap =
+                current.Writes.Intersect(previous.Reads).Any()
+                || current.Writes.Intersect(previous.Writes).Any();
 
             bool readOverlaps = current.Reads.Intersect(previous.Writes).Any();
 
             return writeOverlap || readOverlaps;
         }
-
     }
 }

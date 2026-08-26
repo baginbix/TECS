@@ -24,5 +24,6 @@
   <Folder Name="/Tests/">
     <Project Path="tests/Performance/Performance.csproj" />
     <Project Path="tests/UnitTestsECS/UnitTestsECS.csproj" />
+    <Project Path="tests/IntegrationTests/IntegrationTests.csproj" />
   </Folder>
 </Solution>

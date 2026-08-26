@@ -6,14 +6,15 @@ using TECS;
 using TECS.Commands;
 
 namespace TECS.Executors;
+
 public class SingleThreadExecutor : IExecutor
 {
     public void Execute(List<SystemNode> systems, ECS ecs)
     {
         CommandBuffer cmd = new();
-        foreach(var system in systems)
+        foreach (var system in systems)
         {
-            system.System.Run(ecs, cmd);
+            system.System.System.Run(ecs, cmd, system.System.LastRunTick);
         }
         cmd.Flush(ecs);
     }
