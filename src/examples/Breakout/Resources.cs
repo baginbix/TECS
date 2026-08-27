@@ -1,10 +1,11 @@
 ﻿using System.Collections.Generic;
 using Microsoft.Xna.Framework.Graphics;
 using TECS;
+using TECS.Resources;
 
 namespace Breakout;
 
-public class Assets: IResource
+public class Assets:IResource
 {
     private Dictionary<string, Texture2D>  textures = new();
 

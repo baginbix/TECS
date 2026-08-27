@@ -127,7 +127,6 @@ public class QueryGenerator : IIncrementalGenerator
                     else if (attrName == "Changed")
                     {
                         changedTypes.Add(typeArg);
-                        Console.WriteLine($"Typeargs for changed: {typeArg}");
                     }
                 }
             }
@@ -209,6 +208,7 @@ public class QueryGenerator : IIncrementalGenerator
             using System.Runtime.CompilerServices;
             using TECS;
             using TECS.Query;
+            using TECS.Resources;
 
             {{namespaceStart}}
 
@@ -299,7 +299,8 @@ public class QueryGenerator : IIncrementalGenerator
             constructors.AppendLine(
                 $"            _sparse{i} = ref MemoryMarshal.GetReference(set{i}.GetSparseSet());"
             );
-            if (!field.IsReadonly)
+            bool isChanged = model.ChangedTypes.Contains(field.Type);
+            if (!field.IsReadonly || isChanged)
             {
                 fields.AppendLine($"    private ref uint _ticks{i};");
                 constructors.AppendLine(
@@ -470,12 +471,17 @@ public class QueryGenerator : IIncrementalGenerator
             }
 
             sb.Append(filterChecks);
+            if (model.ChangedTypes.Contains(model.Fields[driver].Type))
+            {
+                sb.AppendLine(
+                    $"              if (Unsafe.Add(ref _ticks{driver}, _index) <= _systemTick) continue;"
+                );
+            }
 
             for (int other = 0; other < model.Fields.Count; other++)
             {
                 if (driver == other)
                     continue;
-                
 
                 sb.AppendLine(
                     $$"""
@@ -492,14 +498,13 @@ public class QueryGenerator : IIncrementalGenerator
                     """
                 );
 
-                var changedType = model.ChangedTypes.Contains(model.Fields[other].Type);
-                model.ChangedTypes.ForEach( c => sb.AppendLine($"// {c}"));
-                if (changedType)
+                if (model.ChangedTypes.Contains(model.Fields[other].Type))
                 {
                     sb.AppendLine(
-                        $"            if(Unsafe.Add(ref _ticks{other}, _idx{other}) <= _systemTick) continue;"
+                        $"              if (Unsafe.Add(ref _ticks{other}, _idx{other}) <= _systemTick) continue;"
                     );
                 }
+
                 /*
                     sb.AppendLine(
                     $"                        if(pageIndex >= _sparse{other}.Length) continue;"

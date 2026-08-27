@@ -87,7 +87,7 @@ public record ResParam(string ParameterName, int Index, string ResourceType)
         "Res_" + ResourceType.Replace("global::", "").Replace(".", "_");
 
     public override string? GenerateSetupCode() =>
-        $"var res_{Index} = new global::TECS.Query.Res<{ResourceType}> {{ Value = ecs.GetResource<{ResourceType}>() }};";
+        $"var res_{Index} = new global::TECS.Resources.Res<{ResourceType}> {{ Value = ecs.GetResource<{ResourceType}>() }};";
 
     public override string GenerateArgumentCode() => $"res_{Index}";
 
@@ -97,7 +97,7 @@ public record ResParam(string ParameterName, int Index, string ResourceType)
 public record ResMutParam(string ParameterName, int Index, string ResourceType)
     : SystemParam(ParameterName, Index)
 {
-    public override string FullTypeName => $"global::TECS.Query.ResMut<{ResourceType}>";
+    public override string FullTypeName => $"global::TECS.Resources.ResMut<{ResourceType}>";
     public override string TypeSignatureId =>
         "ResMut_" + ResourceType.Replace("global::", "").Replace(".", "_");
 

@@ -1,7 +1,8 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using TECS;
-using TECS.Query; // Assuming this is where [Query] lives
+using TECS.Query;
+using TECS.Resources; // Assuming this is where [Query] lives
 
 namespace Breakout;
 

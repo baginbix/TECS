@@ -1,3 +1,5 @@
+using TECS.Resources;
+
 namespace TECS.Query;
 
 public readonly ref struct Query<T>

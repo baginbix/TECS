@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 using src.examples;
 using static src.examples.HelperFunctions;
+using TECS.Resources;
 
 namespace Breakout;
 
