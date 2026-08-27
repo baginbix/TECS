@@ -42,6 +42,7 @@ public class SystemRegistrationGenerator : IIncrementalGenerator
             using TECS.Query;
             using TECS.Commands;
             using TECS.Systems;
+            using TECS.Resources;
 
             namespace TECS
             {
