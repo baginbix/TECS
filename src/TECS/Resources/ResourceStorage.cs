@@ -5,17 +5,19 @@ using System.Threading.Tasks;
 
 namespace TECS.Resources
 {
-    public class ResourceStorage
+    public class IResourceStorage;
+
+    public class ResourceStorage<T> : IResourceStorage
     {
-        private IResource _resource;
+        private T _resource;
         private uint _changedTick = 0;
 
-        public ResourceStorage(IResource resource)
+        public ResourceStorage(T resource)
         {
             _resource = resource;
         }
 
-        public ref IResource GetResource()
+        public ref T GetResource()
         {
             return ref _resource;
         }
@@ -24,6 +26,5 @@ namespace TECS.Resources
         {
             _changedTick = currentTick;
         }
-        
     }
 }

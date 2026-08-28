@@ -140,7 +140,12 @@ public class QueryGenerator : IIncrementalGenerator
         foreach (var f in structDecl.Members.OfType<FieldDeclarationSyntax>())
         {
             string rawType = f.Declaration.Type.ToString();
-            string cleanType = rawType.Replace("ref", "").Replace("readonly", "").Trim();
+            //string cleanType = rawType.Replace("ref", "").Replace("readonly", "").Trim();
+            string cleanType = f.Declaration.Type switch
+            {
+                RefTypeSyntax refType => refType.Type.ToString(),
+                _ => f.Declaration.Type.ToString(),
+            };
             string fieldName = f.Declaration.Variables.First().Identifier.Text;
             bool isReadonly = IsReadonly(f);
             // If it's the Entity field, save the name but DO NOT add to fields list

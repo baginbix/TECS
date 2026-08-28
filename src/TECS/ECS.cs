@@ -20,7 +20,7 @@ namespace TECS
             where T : struct;
         Option<T> QueryReadonlyComponent<T>(Entity entity)
             where T : struct;
-        T GetResource<T>()
+        ref T GetResource<T>()
             where T : IResource;
         T GetTResourceMut<T>()
             where T : IResource;
@@ -36,7 +36,7 @@ namespace TECS
 
         private Bitset[] entityMasks;
 
-        Dictionary<Type, ResourceStorage> resources;
+        Dictionary<Type, IResourceStorage> resources;
 
         Dictionary<Type, IEventWriter> cachedWriters;
         Dictionary<(Type systemType, Type eventType), IEventReader> cachedReaders;
@@ -90,28 +90,29 @@ namespace TECS
         public void InsertResource<T>(T newResource)
             where T : IResource
         {
-            resources.Add(typeof(T), new ResourceStorage(newResource));
+            resources.Add(typeof(T), new ResourceStorage<T>(newResource));
         }
 
         public void InsertResource<T>()
             where T : IResource, new()
         {
-            resources.Add(typeof(T), new ResourceStorage(new T()));
+            resources.Add(typeof(T), new ResourceStorage<T>(new T()));
         }
 
-        public T GetResource<T>()
+        public ref T GetResource<T>()
             where T : IResource
         {
 #if DEBUG
             if (resources.TryGetValue(typeof(T), out var value))
             {
-                return (T)value.GetResource();
+                var storage = value as ResourceStorage<T>;
+                return ref storage.GetResource();
             }
             throw new InvalidOperationException(
                 $"The resource of type {typeof(T).Name} has not been added to the ECS!"
             );
 # else
-            return (T)resources[typeof(T)].GetResource();
+            return ref (ResourceStorage<T>)(resources[typeof(T)]).GetResource();
 #endif
         }
 
@@ -121,8 +122,9 @@ namespace TECS
 #if DEBUG
             if (resources.TryGetValue(typeof(T), out var value))
             {
-                value.UpdateLastTick((uint)GlobalTick);
-                return (T)value.GetResource();
+                var storage = (ResourceStorage<T>)value;
+                storage.UpdateLastTick((uint)GlobalTick);
+                return storage.GetResource();
             }
             throw new InvalidOperationException(
                 $"The resource of type {typeof(T).Name} has not been added to the ECS!"

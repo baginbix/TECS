@@ -82,12 +82,12 @@ public record EventWriterParam(string ParameterName, int Index, string EventType
 public record ResParam(string ParameterName, int Index, string ResourceType)
     : SystemParam(ParameterName, Index)
 {
-    public override string FullTypeName => $"global::TECS.Query.Res<{ResourceType}>";
+    public override string FullTypeName => $"global::TECS.Resources.Res<{ResourceType}>";
     public override string TypeSignatureId =>
         "Res_" + ResourceType.Replace("global::", "").Replace(".", "_");
 
     public override string? GenerateSetupCode() =>
-        $"var res_{Index} = new global::TECS.Resources.Res<{ResourceType}> {{ Value = ecs.GetResource<{ResourceType}>() }};";
+        $"var res_{Index} = new global::TECS.Resources.Res<{ResourceType}>(ref ecs.GetResource<{ResourceType}>());";
 
     public override string GenerateArgumentCode() => $"res_{Index}";
 
@@ -102,7 +102,7 @@ public record ResMutParam(string ParameterName, int Index, string ResourceType)
         "ResMut_" + ResourceType.Replace("global::", "").Replace(".", "_");
 
     public override string? GenerateSetupCode() =>
-        $"var resMut_{Index} = new global::TECS.Query.ResMut<{ResourceType}> {{ Value = ecs.GetTResourceMut<{ResourceType}>() }};";
+        $"var resMut_{Index} = new global::TECS.Query.ResMut<{ResourceType}>(ref ecs.GetResource<ResourceType>());";
 
     public override string GenerateArgumentCode() => $"resMut_{Index}";
 
