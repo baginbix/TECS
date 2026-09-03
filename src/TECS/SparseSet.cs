@@ -129,7 +129,7 @@ namespace TECS
             return new Option<T>(ref CollectionsMarshal.AsSpan(dense)[index]);
         }
 
-        public List<T> GetDense(){
+        public List<T> GetDense(){ 
             return dense;
         }
 

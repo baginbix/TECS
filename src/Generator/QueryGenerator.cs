@@ -14,6 +14,7 @@ public class QueryGenerator : IIncrementalGenerator
     private record QueryField(string Type, string Name, bool IsRef, bool IsReadonly);
 
     private record QueryModel(
+        bool IsSpan,
         string StructName,
         string NamespaceName,
         string entityFieldName,
@@ -56,6 +57,7 @@ public class QueryGenerator : IIncrementalGenerator
         );
     }
 
+ 
     static string GetNamespace(INamedTypeSymbol symbol)
     {
         // If the struct isn't wrapped in a namespace, it's in the global namespace.
@@ -96,97 +98,151 @@ public class QueryGenerator : IIncrementalGenerator
     }
 
     // --- Phase 1: Parsing ---
-    private static QueryModel ParseQueryModel(StructDeclarationSyntax structDecl, string Namespace)
+private static QueryModel ParseQueryModel(StructDeclarationSyntax structDecl, string Namespace)
+{
+    if (structDecl.TypeParameterList != null)
+        return null;
+
+    var withTypes = new List<string>();
+    var withoutTypes = new List<string>();
+    var changedTypes = new List<string>();
+    bool isQuery = false;
+    bool isSpan = true; 
+
+    foreach (var attrList in structDecl.AttributeLists)
     {
-        if (structDecl.TypeParameterList != null)
-            return null;
-
-        var withTypes = new List<string>();
-        var withoutTypes = new List<string>();
-        var changedTypes = new List<string>();
-        bool isQuery = false;
-
-        foreach (var attrList in structDecl.AttributeLists)
+        foreach (var attr in attrList.Attributes)
         {
-            foreach (var attr in attrList.Attributes)
+            if (attr.Name is IdentifierNameSyntax nameSyntax)
             {
-                if (attr.Name is IdentifierNameSyntax nameSyntax)
-                {
-                    if (nameSyntax.Identifier.Text is "Query")
-                        isQuery = true;
-                }
-                else if (attr.Name is GenericNameSyntax genericName)
-                {
-                    string attrName = genericName.Identifier.Text;
-                    string typeArg = genericName.TypeArgumentList.Arguments[0].ToString();
+                if (nameSyntax.Identifier.Text is "Query")
+                    isQuery = true;
+            }
+            else if (attr.Name is GenericNameSyntax genericName)
+            {
+                string attrName = genericName.Identifier.Text;
+                string typeArg = genericName.TypeArgumentList.Arguments[0].ToString();
 
-                    if (attrName == "With")
-                        withTypes.Add(typeArg);
-                    else if (attrName == "Without")
-                        withoutTypes.Add(typeArg);
-                    else if (attrName == "Changed")
-                    {
-                        changedTypes.Add(typeArg);
-                    }
-                }
+                if (attrName == "With")
+                    withTypes.Add(typeArg);
+                else if (attrName == "Without")
+                    withoutTypes.Add(typeArg);
+                else if (attrName == "Changed")
+                    changedTypes.Add(typeArg);
             }
         }
-
-        if (!isQuery)
-            return null;
-        string entityFieldName = null;
-        var fields = new List<QueryField>();
-
-        foreach (var f in structDecl.Members.OfType<FieldDeclarationSyntax>())
-        {
-            string rawType = f.Declaration.Type.ToString();
-            //string cleanType = rawType.Replace("ref", "").Replace("readonly", "").Trim();
-            string cleanType = f.Declaration.Type switch
-            {
-                RefTypeSyntax refType => refType.Type.ToString(),
-                _ => f.Declaration.Type.ToString(),
-            };
-            string fieldName = f.Declaration.Variables.First().Identifier.Text;
-            bool isReadonly = IsReadonly(f);
-            // If it's the Entity field, save the name but DO NOT add to fields list
-            if (cleanType == "Entity")
-            {
-                entityFieldName = fieldName;
-            }
-            else
-            {
-                fields.Add(
-                    new QueryField(
-                        Type: cleanType,
-                        Name: fieldName,
-                        IsRef: rawType.Contains("ref"),
-                        IsReadonly: isReadonly
-                    )
-                );
-            }
-        }
-
-        if (fields.Count == 0)
-            return null;
-
-        return new QueryModel(
-            structDecl.Identifier.Text,
-            Namespace,
-            entityFieldName,
-            fields,
-            withTypes,
-            withoutTypes,
-            changedTypes
-        );
     }
+
+    if (!isQuery)
+        return null;
+
+    string entityFieldName = null;
+    var fields = new List<QueryField>();
+
+    foreach (var f in structDecl.Members.OfType<FieldDeclarationSyntax>())
+    {
+        TypeSyntax typeSyntax = f.Declaration.Type;
+        string rawType = typeSyntax.ToString();
+        string cleanType = rawType;
+        bool fieldIsSpan = false;
+
+        // Unwrap Span<T> to extract 'T' (e.g. Position) for SparseSet lookups
+        if (typeSyntax is GenericNameSyntax genericType && genericType.Identifier.Text == "Span")
+        {
+            cleanType = genericType.TypeArgumentList.Arguments[0].ToString();
+            fieldIsSpan = true;
+        }
+        else if (typeSyntax is RefTypeSyntax refType)
+        {
+            cleanType = refType.Type.ToString();
+        }
+
+        string fieldName = f.Declaration.Variables.First().Identifier.Text;
+        bool isReadonly = IsReadonly(f);
+
+        if (cleanType == "Entity")
+        {
+            entityFieldName = fieldName;
+        }
+        else
+        {
+            if (!fieldIsSpan) 
+                isSpan = false;
+
+            fields.Add(
+                new QueryField(
+                    Type: cleanType, // Stores "Position" instead of "Span<Position>"
+                    Name: fieldName,
+                    IsRef: rawType.Contains("ref"),
+                    IsReadonly: isReadonly
+                )
+            );
+        }
+    }
+
+    if (fields.Count == 0)
+        return null;
+
+    return new QueryModel(
+        isSpan,
+        structDecl.Identifier.Text,
+        Namespace,
+        entityFieldName,
+        fields,
+        withTypes,
+        withoutTypes,
+        changedTypes
+    );
+}
 
     // --- Phase 2: Generation ---
     private static string GenerateSourceCode(QueryModel model)
     {
+        string namespaceStart = string.IsNullOrEmpty(model.NamespaceName)
+            ? ""
+            : $"namespace {model.NamespaceName}\n{{";
+        if (model.IsSpan)
+        {
+            StringBuilder spans = new();
+            for (int i = 0; i < model.Fields.Count; i++)
+            {
+                var field = model.Fields[i];
+                string comma = (i == model.Fields.Count - 1) ? "" : ",";
+                string refStr = field.IsRef ? "ref" : "";
+                spans.AppendLine(
+                    $"        {field.Name} = CollectionsMarshal.AsSpan(query.World.GetSparseSet<{field.Type}>().GetDense()){comma}"
+                );
+            }
+            return $$"""
+            // <auto-generated/>
+            using System;
+            using System.Runtime.InteropServices;
+            using System.Runtime.CompilerServices;
+            using TECS;
+            using TECS.Query;
+            using TECS.Resources;
+
+            {{namespaceStart}}
+
+                public static class {{model.StructName}}Extensions
+                {
+                    {{GenerateAccess(FieldAccess.Read,model)}}
+                    {{GenerateAccess(FieldAccess.Write, model)}}
+ 
+                    public static {{model.StructName }} Single(this Query<{{model.StructName}}> query){
+                        return new {{model.StructName}}{ 
+                            {{spans}}
+                        };
+                    }
+                }
+            }
+            """;
+        }
         var fieldsSB = new StringBuilder();
         var constructorsSB = new StringBuilder();
         var moveNextChecks = new StringBuilder();
-
+ 
+ 
         GenerateComponentCaches(model, fieldsSB, constructorsSB);
         GenerateFilterCaches(model, fieldsSB, constructorsSB, moveNextChecks);
 
@@ -194,9 +250,7 @@ public class QueryGenerator : IIncrementalGenerator
         string moveNextLogic = GenerateMoveNextLogic(model, moveNextChecks.ToString());
         string fieldAssignments = GenerateCurrentAssignments(model);
 
-        string namespaceStart = string.IsNullOrEmpty(model.NamespaceName)
-            ? ""
-            : $"namespace {model.NamespaceName}\n{{";
+        
         string namespaceEnd = string.IsNullOrEmpty(model.NamespaceName) ? "" : "}";
         bool needsEntity = model.Fields.Count > 1 || !string.IsNullOrEmpty(model.entityFieldName);
         string entityLocal = needsEntity

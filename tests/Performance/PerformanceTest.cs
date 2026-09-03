@@ -95,7 +95,7 @@ public class EcsBenchmarks
     private ECS ecs;
     private CommandBuffer cmd;
 
-    [Params(1_000_000)]
+    [Params(100_000)]
     public int EntityCount { get; set; }
 
     [GlobalSetup]

@@ -27,6 +27,12 @@ namespace UnitTestsECS
 
     public struct Frozen { }
 
+    [Query]
+    public ref struct SpanQuery
+    {
+        public Span<Position> positions;
+    }
+
     // 2. Define the Query Struct with the required attribute!
     [Query]
     public ref struct MovementQuery
@@ -342,5 +348,19 @@ namespace UnitTestsECS
 
             Assert.Equal(expectedCount, actualFound);
         }
+
+        [Fact]
+        public void Query_ASpan_GetSpanOfComponents()
+        {
+            var ecs = new ECS();
+ 
+            for (int i = 0; i < 1; i++)
+            { 
+                var entity = ecs.CreateEntity();
+                ecs.InsertComponent(entity, new Position { X = 5 });
+            }
+            var q = new Query<SpanQuery>(ecs,0);
+            Assert.Equal(1,q.Single().positions.Length);
+        }
     }
-}
+} 
