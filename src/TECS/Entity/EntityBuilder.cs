@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TECS.Commands;
 
 namespace TECS.Entities
@@ -18,9 +14,10 @@ namespace TECS.Entities
             Id = entityId;
         }
 
-        public EntityBuilder With<T>(T component) where T : struct
+        public EntityBuilder With<T>(T component)
+            where T : struct
         {
-            cmd.InsertComponent(Id, component);
+            cmd.AddComponent(Id, component);
             return this;
         }
 
@@ -29,6 +26,5 @@ namespace TECS.Entities
         /// </summary>
         /// <param name="builder"></param>
         public static implicit operator Entity(EntityBuilder builder) => builder.Id;
-
     }
 }

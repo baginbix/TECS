@@ -7,7 +7,7 @@ Console.WriteLine("Initializing Event System Example...\n");
 
 App app = new App();
 
-// StartUp runs once during setup. 
+// StartUp runs once during setup.
 // Systems registered without a phase default to Update, running every frame when app.Run() is called.
 app.AddSystem(GameSystems.SetUp, SystemPhase.StartUp);
 app.AddSystem(GameSystems.PoisonSystem);
@@ -22,20 +22,30 @@ for (int i = 1; i <= 2; i++)
 Console.WriteLine("\nSimulation complete. Press any key to exit.");
 Console.ReadLine();
 
-
 // Components and events are plain value types (structs).
 // Keeping them pure data allows TECS to pack them tightly in contiguous memory arrays.
-public struct Health { public int Value; }
-public struct Poison { public Entity Target; public int DamagePerTick; }
-public struct DamageEvent { public Entity Target; public int Amount; }
+public struct Health
+{
+    public int Value;
+}
 
+public struct Poison
+{
+    public Entity Target;
+    public int DamagePerTick;
+}
+
+public struct DamageEvent
+{
+    public Entity Target;
+    public int Amount;
+}
 
 [Query]
 public ref struct PoisonQuery
 {
     public ref readonly Poison Poison;
 }
-
 
 public static class GameSystems
 {
@@ -44,9 +54,9 @@ public static class GameSystems
     [System]
     public static void SetUp(CommandBuffer cmd)
     {
-        Entity goblin = cmd.SpawnEntity();
-        cmd.InsertComponent(goblin, new Health { Value = 50 });
-        cmd.InsertComponent(goblin, new Poison { Target = goblin, DamagePerTick = 5 });
+        Entity goblin = cmd.CreateEntity();
+        cmd.AddComponent(goblin, new Health { Value = 50 });
+        cmd.AddComponent(goblin, new Poison { Target = goblin, DamagePerTick = 5 });
     }
 
     // Emitting events decouples systems: PoisonSystem doesn't know or care if Health even exists.
@@ -57,7 +67,9 @@ public static class GameSystems
         {
             var poison = item.Poison;
             writer.Send(new DamageEvent { Target = poison.Target, Amount = poison.DamagePerTick });
-            Console.WriteLine($"[PoisonSystem] Sent {poison.DamagePerTick} damage to Entity {poison.Target.Id}");
+            Console.WriteLine(
+                $"[PoisonSystem] Sent {poison.DamagePerTick} damage to Entity {poison.Target.Id}"
+            );
         }
     }
 
@@ -75,7 +87,9 @@ public static class GameSystems
                 ref Health health = ref healthOpt.Unwrap();
                 health.Value -= evt.Amount;
 
-                Console.WriteLine($"[DamageSystem] Entity {evt.Target.Id} took {evt.Amount} damage. Remaining Health: {health.Value}");
+                Console.WriteLine(
+                    $"[DamageSystem] Entity {evt.Target.Id} took {evt.Amount} damage. Remaining Health: {health.Value}"
+                );
             }
         }
     }

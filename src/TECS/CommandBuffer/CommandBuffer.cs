@@ -1,13 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Input;
 using TECS.Entities;
 
 namespace TECS.Commands;
@@ -20,12 +11,14 @@ public class CommandBuffer
         public Type componentType;
         public ICommandQueue commandQueue;
     }
+
     List<Entity> entitiesToBeDestroyed;
 
     List<Entity> entitiesToSpawn;
     int currentFakeID = -1;
     List<CommandItem> componentCommandQueues;
     List<Entity> mappedIDs;
+
     public CommandBuffer()
     {
         entitiesToBeDestroyed = new(100);
@@ -34,54 +27,61 @@ public class CommandBuffer
         mappedIDs = new(100);
     }
 
-    private Entity GenerateID(){
-        return new(currentFakeID--,0);
+    private Entity GenerateID()
+    {
+        return new(currentFakeID--, 0);
     }
 
-    public void DestroyEntity(Entity id){
+    public void DestroyEntity(Entity id)
+    {
         entitiesToBeDestroyed.Add(id);
     }
 
-    public EntityBuilder SpawnEntity()
+    public EntityBuilder CreateEntity()
     {
         var entity = GenerateID();
         entitiesToSpawn.Add(entity);
         return new EntityBuilder(this, entity);
     }
 
-    public void InsertComponent<T>(Entity entity,T component)
-    where T : struct
+    public void AddComponent<T>(Entity entity, T component)
+        where T : struct
     {
         var queue = GetOrCreateCommandQueue<T>();
         queue.InsertComponent(component, entity);
     }
 
     public void RemoveComponent<T>(Entity entity)
-    where T : struct
+        where T : struct
     {
-    #if DEBUG
+#if DEBUG
         if (entity.Id < 0)
         {
             throw new InvalidOperationException(
-                $"Attempted to remove {typeof(T).Name} from a 'Fake' Entity (ID: {entity.Id}). " +
-                "If you just spawned this entity, you can't do this. This behavior is not yet supported");
+                $"Attempted to remove {typeof(T).Name} from a 'Fake' Entity (ID: {entity.Id}). "
+                    + "If you just spawned this entity, you can't do this. This behavior is not yet supported"
+            );
         }
-    #endif
+#endif
         var queue = GetOrCreateCommandQueue<T>();
         queue.RemoveComponent(entity);
     }
 
-    public void Flush(ECS ecs){
-        for(int i = 0; i < entitiesToSpawn.Count; i++){
+    public void Flush(ECS ecs)
+    {
+        for (int i = 0; i < entitiesToSpawn.Count; i++)
+        {
             mappedIDs.Add(ecs.CreateEntity());
         }
         entitiesToSpawn.Clear();
 
-        foreach(var queue in componentCommandQueues){
+        foreach (var queue in componentCommandQueues)
+        {
             queue.commandQueue.Flush(ecs, CollectionsMarshal.AsSpan(mappedIDs));
         }
 
-        foreach(var entity in entitiesToBeDestroyed){
+        foreach (var entity in entitiesToBeDestroyed)
+        {
             ecs.DestroyEntity(entity);
         }
         entitiesToBeDestroyed.Clear();
@@ -90,19 +90,22 @@ public class CommandBuffer
         mappedIDs.Clear();
     }
 
-
     private ComponentQueue<T> GetOrCreateCommandQueue<T>()
-    where T : struct{
+        where T : struct
+    {
         Type componentType = typeof(T);
-        foreach(var item in componentCommandQueues){
-            if(item.componentType == componentType){
+        foreach (var item in componentCommandQueues)
+        {
+            if (item.componentType == componentType)
+            {
                 return (ComponentQueue<T>)item.commandQueue;
             }
         }
         var newQueue = new ComponentQueue<T>();
-        var commandItem = new CommandItem(){
+        var commandItem = new CommandItem()
+        {
             componentType = componentType,
-            commandQueue = newQueue
+            commandQueue = newQueue,
         };
         componentCommandQueues.Add(commandItem);
         return newQueue;

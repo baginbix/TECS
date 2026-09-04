@@ -60,9 +60,6 @@ namespace TECS.Scheduler
                 for (int j = 0; j < i; j++)
                 {
                     SystemNode previous = nodes[j];
-
-                    //TODO: Since I reworked how Queries and Systems are created and added
-                    // I need to add back Read/Write for my systems
                     if (HasDependency(current.System.System, previous.System.System))
                     {
                         current.InitialDependencyCount++;

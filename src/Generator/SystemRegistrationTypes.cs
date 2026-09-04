@@ -102,7 +102,7 @@ public record ResMutParam(string ParameterName, int Index, string ResourceType)
         "ResMut_" + ResourceType.Replace("global::", "").Replace(".", "_");
 
     public override string? GenerateSetupCode() =>
-        $"var resMut_{Index} = new global::TECS.Query.ResMut<{ResourceType}>(ref ecs.GetResource<ResourceType>());";
+        $"var resMut_{Index} = new global::TECS.Query.ResMut<{ResourceType}>(ref ecs.GetResource<{ResourceType}>());";
 
     public override string GenerateArgumentCode() => $"resMut_{Index}";
 

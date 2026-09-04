@@ -112,7 +112,7 @@ namespace TECS
                 $"The resource of type {typeof(T).Name} has not been added to the ECS!"
             );
 # else
-            return ref (ResourceStorage<T>)(resources[typeof(T)]).GetResource();
+            return ref ((ResourceStorage<T>)resources[typeof(T)]).GetResource();
 #endif
         }
 
@@ -130,7 +130,7 @@ namespace TECS
                 $"The resource of type {typeof(T).Name} has not been added to the ECS!"
             );
 # else
-            var value = resources[typeof(T)];
+            var value = resources[typeof(T)] as ResourceStorage<T>;
             value.UpdateLastTick((uint)GlobalTick);
             return (T)value.GetResource();
 #endif

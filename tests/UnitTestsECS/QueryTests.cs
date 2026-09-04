@@ -266,8 +266,8 @@ namespace UnitTestsECS
         {
             ECS world = new();
             CommandBuffer cmd = new();
-            cmd.SpawnEntity().With(new Position { X = 42 });
-            cmd.SpawnEntity().With(new Position { X = 420 });
+            cmd.CreateEntity().With(new Position { X = 42 });
+            cmd.CreateEntity().With(new Position { X = 420 });
             cmd.Flush(world);
             var positions = world.GetSparseSet<Position>();
 
@@ -288,8 +288,8 @@ namespace UnitTestsECS
         {
             ECS world = new();
             CommandBuffer cmd = new();
-            cmd.SpawnEntity().With(new Position { X = 42 }).With(new Velocity());
-            cmd.SpawnEntity().With(new Position { X = 420 }).With(new Velocity());
+            cmd.CreateEntity().With(new Position { X = 42 }).With(new Velocity());
+            cmd.CreateEntity().With(new Position { X = 420 }).With(new Velocity());
             cmd.Flush(world);
             var positions = world.GetSparseSet<Position>();
 
@@ -318,12 +318,12 @@ namespace UnitTestsECS
             {
                 if (rand.NextDouble() > 0.5)
                 {
-                    cmd.SpawnEntity().With(new Position { X = 42 }).With(new Velocity());
+                    cmd.CreateEntity().With(new Position { X = 42 }).With(new Velocity());
                     expectedCount++;
                 }
                 else
                 {
-                    cmd.SpawnEntity().With(new Position { X = 420 }).With(new Velocity());
+                    cmd.CreateEntity().With(new Position { X = 420 }).With(new Velocity());
                 }
             }
 

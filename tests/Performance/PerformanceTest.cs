@@ -1,5 +1,4 @@
-﻿using System;
-using System.Numerics;
+﻿using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using BenchmarkDotNet.Attributes;
@@ -95,20 +94,19 @@ public class EcsBenchmarks
     private ECS ecs;
     private CommandBuffer cmd;
 
-    [Params(100_000)]
+    [Params(1_000_000)]
     public int EntityCount { get; set; }
 
     [GlobalSetup]
     public void Setup()
     {
-        // Initialize the App, and grab its internal ECS for the other benchmarks
         app = new App();
         ecs = new ECS();
         cmd = new CommandBuffer();
 
         for (int i = 0; i < EntityCount; i++)
         {
-            var e = cmd.SpawnEntity()
+            var e = cmd.CreateEntity()
                 .With(new Position { X = 0, Y = 0 })
                 .With(new Velocity { Dx = 1f, Dy = 1f })
                 .With(
@@ -122,12 +120,12 @@ public class EcsBenchmarks
 
             if (i % 2 == 0) // 50% of entities
             {
-                cmd.InsertComponent(e, new IsPlayer());
+                cmd.AddComponent(e, new IsPlayer());
             }
 
             if (i % 4 == 0) // 25% of entities
             {
-                cmd.InsertComponent(e, new IsFrozen());
+                cmd.AddComponent(e, new IsFrozen());
             }
         }
 

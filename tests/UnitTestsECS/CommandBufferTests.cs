@@ -1,12 +1,21 @@
-using Xunit;
 using TECS;
 using TECS.Commands;
+using Xunit;
 
 public class CommandBufferTests
 {
     // Dummy components for testing
-    public struct Position { public int X; public int Y; }
-    public struct Velocity { public int Dx; public int Dy; }
+    public struct Position
+    {
+        public int X;
+        public int Y;
+    }
+
+    public struct Velocity
+    {
+        public int Dx;
+        public int Dy;
+    }
 
     [Fact]
     public void Flush_ShouldDestroyQueuedEntities()
@@ -14,7 +23,7 @@ public class CommandBufferTests
         // Arrange
         var ecs = new ECS();
         var cmd = new CommandBuffer();
-        
+
         Entity e1 = ecs.CreateEntity();
         ecs.InsertComponent(e1, new Position { X = 10 });
 
@@ -23,7 +32,7 @@ public class CommandBufferTests
 
         // Assert BEFORE flush: The entity should still exist and have its component!
         var positionsBefore = ecs.QueryComponent<Position>();
-        Assert.Single(positionsBefore); 
+        Assert.Single(positionsBefore);
 
         // Act - Flush
         cmd.Flush(ecs);
@@ -41,13 +50,13 @@ public class CommandBufferTests
         var cmd = new CommandBuffer();
 
         // Act - Spawn through command buffer (generates fake ID)
-        Entity fakeEntity = cmd.SpawnEntity();
-        
+        Entity fakeEntity = cmd.CreateEntity();
+
         // Assert the fake ID is negative
         Assert.True(fakeEntity.Id < 0);
 
         // Attach a component to the fake ID
-        cmd.InsertComponent(fakeEntity, new Position { X = 99 });
+        cmd.AddComponent(fakeEntity, new Position { X = 99 });
 
         // Assert BEFORE flush: ECS should have zero components
         Assert.Empty(ecs.QueryComponent<Position>());
@@ -69,19 +78,19 @@ public class CommandBufferTests
         var cmd = new CommandBuffer();
 
         // Act - Spawn two entities
-        Entity fake1 = cmd.SpawnEntity();
-        Entity fake2 = cmd.SpawnEntity();
+        Entity fake1 = cmd.CreateEntity();
+        Entity fake2 = cmd.CreateEntity();
 
         // Give them different values so we can verify they didn't overwrite each other
-        cmd.InsertComponent(fake1, new Position { X = 10 });
-        cmd.InsertComponent(fake2, new Position { X = 20 });
+        cmd.AddComponent(fake1, new Position { X = 10 });
+        cmd.AddComponent(fake2, new Position { X = 20 });
 
         cmd.Flush(ecs);
 
         // Assert
         var positions = ecs.QueryComponent<Position>();
-        Assert.Equal(2, positions.Count); 
-        
+        Assert.Equal(2, positions.Count);
+
         // Because of how ECS dense arrays work, they should both be there.
         // We just verify the sum or check for both values to ensure both mapped correctly.
         Assert.Contains(positions, p => p.X == 10);
@@ -94,13 +103,13 @@ public class CommandBufferTests
         // Arrange
         var ecs = new ECS();
         var cmd = new CommandBuffer();
-        
+
         // Create a real entity immediately
         Entity realEntity = ecs.CreateEntity();
         ecs.InsertComponent(realEntity, new Position { X = 5 });
 
         // Act - Queue an addition and a removal
-        cmd.InsertComponent(realEntity, new Velocity { Dx = 2 });
+        cmd.AddComponent(realEntity, new Velocity { Dx = 2 });
         cmd.RemoveComponent<Position>(realEntity);
 
         // Assert BEFORE flush: Should only have Position, no Velocity
@@ -118,22 +127,22 @@ public class CommandBufferTests
     }
 
     [Fact]
-public void CommandBuffer_ShouldResolveContradictoryCommands()
-{
-    var ecs = new ECS();
-    var cmd = new CommandBuffer();
+    public void CommandBuffer_ShouldResolveContradictoryCommands()
+    {
+        var ecs = new ECS();
+        var cmd = new CommandBuffer();
 
-    Entity e = ecs.CreateEntity();
+        Entity e = ecs.CreateEntity();
 
-    // The "Change of Heart": Add it, then immediately remove it before flushing
-    cmd.InsertComponent(e, new Position { X = 100 });
-    cmd.RemoveComponent<Position>(e);
-    
-    cmd.Flush(ecs);
+        // The "Change of Heart": Add it, then immediately remove it before flushing
+        cmd.AddComponent(e, new Position { X = 100 });
+        cmd.RemoveComponent<Position>(e);
 
-    // Assert the component does NOT exist
-    Assert.Empty(ecs.GetComponentList<Position>());
-}
+        cmd.Flush(ecs);
+
+        // Assert the component does NOT exist
+        Assert.Empty(ecs.GetComponentList<Position>());
+    }
 
     [Fact]
     public void CommandBuffer_ShouldHandleDoubleDeletesGracefully()
@@ -142,14 +151,14 @@ public void CommandBuffer_ShouldResolveContradictoryCommands()
         var cmd = new CommandBuffer();
 
         Entity e = ecs.CreateEntity();
-        
+
         // Two different systems both decide to destroy the same entity this frame
         cmd.DestroyEntity(e);
         cmd.DestroyEntity(e);
-        
+
         // This flush should NOT crash! It should destroy it once and ignore the second.
-        cmd.Flush(ecs); 
-        
+        cmd.Flush(ecs);
+
         // To verify it didn't corrupt the state, try making a new entity
         Entity next = ecs.CreateEntity();
         Assert.True(next.Id >= 0);
