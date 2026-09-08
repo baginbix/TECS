@@ -99,41 +99,50 @@ namespace TECS
             resources.Add(typeof(T), new ResourceStorage<T>(new T()));
         }
 
-        public ref T GetResource<T>()
+        public ref readonly T GetResource<T>()
             where T : IResource
         {
-#if DEBUG
+
+            return ref ((ResourceStorage<T>)resources[typeof(T)]).GetResource();
+        }
+
+        public bool TryGetResource<T>(out T result)
+        {
             if (resources.TryGetValue(typeof(T), out var value))
             {
                 var storage = value as ResourceStorage<T>;
-                return ref storage.GetResource();
+                result = storage.GetResource();
+                return true;
             }
-            throw new InvalidOperationException(
-                $"The resource of type {typeof(T).Name} has not been added to the ECS!"
-            );
-# else
-            return ref (ResourceStorage<T>)(resources[typeof(T)]).GetResource();
-#endif
+            #if DEBUG
+            Console.WriteLine($"The resource of type {typeof(T).Name} has not been added to the ECS!");
+            #endif
+            result = default;
+            return false;
         }
 
-        public T GetTResourceMut<T>()
+        public ref T GetTResourceMut<T>()
             where T : IResource
         {
-#if DEBUG
+            var value = resources[typeof(T)] as ResourceStorage<T>;
+            value.UpdateLastTick((uint)GlobalTick);
+            return ref value.GetResource();
+        }
+
+        public bool TryGetResourceMut<T>(out T result)
+        {
             if (resources.TryGetValue(typeof(T), out var value))
             {
-                var storage = (ResourceStorage<T>)value;
+                var storage = value as ResourceStorage<T>;
+                result = storage.GetResource();
                 storage.UpdateLastTick((uint)GlobalTick);
-                return storage.GetResource();
+                return true;
             }
-            throw new InvalidOperationException(
-                $"The resource of type {typeof(T).Name} has not been added to the ECS!"
-            );
-# else
-            var value = resources[typeof(T)];
-            value.UpdateLastTick((uint)GlobalTick);
-            return (T)value.GetResource();
-#endif
+            #if DEBUG
+            Console.WriteLine($"The resource of type {typeof(T).Name} has not been added to the ECS!");
+            #endif
+            result = default;
+            return false;
         }
 
         /*
