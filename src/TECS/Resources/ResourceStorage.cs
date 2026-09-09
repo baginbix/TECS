@@ -12,6 +12,8 @@ namespace TECS.Resources
         private T _resource;
         private uint _changedTick = 0;
 
+        public uint LastChangedTick => _changedTick;
+
         public ResourceStorage(T resource)
         {
             _resource = resource;
