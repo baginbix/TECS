@@ -3,10 +3,17 @@ using TECS.Event;
 using TECS.Event;
 using TECS.Queries;
 using TECS.Resources;
+using TECS.Result;
 using TECS.Systems;
 
 namespace TECS
 {
+    public enum ResourceStatus
+    {
+        Success,
+        None,
+    }
+
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
     public class ECSSystemAttribute : Attribute { }
 
@@ -26,7 +33,7 @@ namespace TECS
             where T : IResource;
     }
 
-    public class ECS : IEngine
+    public class ECS
     {
         public ulong GlobalTick { get; private set; } = 1;
         EntityManager entityManager;
@@ -102,47 +109,38 @@ namespace TECS
         public ref readonly T GetResource<T>()
             where T : IResource
         {
-
             return ref ((ResourceStorage<T>)resources[typeof(T)]).GetResource();
         }
 
-        public bool TryGetResource<T>(out T result)
+        public Option<T> TryGetResource<T>()
         {
             if (resources.TryGetValue(typeof(T), out var value))
             {
-                var storage = value as ResourceStorage<T>;
-                result = storage.GetResource();
-                return true;
+                var storage = (ResourceStorage<T>)value;
+                ref var result = ref storage.GetResource();
+                return new Option<T>(ref result);
             }
-            #if DEBUG
-            Console.WriteLine($"The resource of type {typeof(T).Name} has not been added to the ECS!");
-            #endif
-            result = default;
-            return false;
+
+            return Option<T>.None;
         }
 
-        public ref T GetTResourceMut<T>()
+        public ref T GetResourceMut<T>()
             where T : IResource
         {
-            var value = resources[typeof(T)] as ResourceStorage<T>;
+            var value = (ResourceStorage<T>)resources[typeof(T)];
             value.UpdateLastTick((uint)GlobalTick);
             return ref value.GetResource();
         }
 
-        public bool TryGetResourceMut<T>(out T result)
+        public OptionMut<T> TryGetResourceMut<T>()
         {
             if (resources.TryGetValue(typeof(T), out var value))
             {
                 var storage = value as ResourceStorage<T>;
-                result = storage.GetResource();
                 storage.UpdateLastTick((uint)GlobalTick);
-                return true;
+                return new OptionMut<T>(ref storage.GetResource());
             }
-            #if DEBUG
-            Console.WriteLine($"The resource of type {typeof(T).Name} has not been added to the ECS!");
-            #endif
-            result = default;
-            return false;
+            return OptionMut<T>.None;
         }
 
         /*
