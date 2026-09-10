@@ -1,17 +1,34 @@
 ﻿using System;
 using System.Collections.Generic;
-using Xunit;
 using TECS;
 using TECS.Query;
 using TECS.Resources;
+using Xunit;
 
 namespace TECS.Tests
 {
     // 1. Components & Resources
-    public struct Position { public float X, Y; }
-    public struct Velocity { public float X, Y; }
-    public struct Health { public int Value; }
-    public class TimeResource : IResource { public float DeltaTime; }
+    public struct Position
+    {
+        public float X,
+            Y;
+    }
+
+    public struct Velocity
+    {
+        public float X,
+            Y;
+    }
+
+    public struct Health
+    {
+        public int Value;
+    }
+
+    public class TimeResource : IResource
+    {
+        public float DeltaTime;
+    }
 
     // 2. Define Queries
     [Query]
@@ -106,7 +123,7 @@ namespace TECS.Tests
 
             // Assert
             // Register and run the system once
-            app.AddSystem(TestSystems.CountEntitiesSystem);
+            app.AddSystem<TECS.Scheduler.Labels.Update>(TestSystems.CountEntitiesSystem);
             app.Run();
 
             // Should only process e1 and e3
