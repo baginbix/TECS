@@ -73,9 +73,9 @@ public class SystemRegistrationGenerator : IIncrementalGenerator
                 // 1. Generate App Extension Methods
                 sourceBuilder.AppendLine(
                     $$"""
-                            public static App AddSystem(this App app, SystemDelegate_{{uniqueId}} system, SystemPhase phase = SystemPhase.Update)
+                            public static App AddSystem<TSchedule>(this App app, SystemDelegate_{{uniqueId}} system)
                             {
-                                app.AddSystemBinding(new SystemBinding_{{uniqueId}}(system), phase);
+                                app.AddSystemBinding<TSchedule>(new SystemBinding_{{uniqueId}}(system));
                                 return app;
                             }
 
