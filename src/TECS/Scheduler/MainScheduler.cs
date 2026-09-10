@@ -1,5 +1,6 @@
 using TECS.Executors;
 using TECS.Resources;
+using TECS.Scheduler.Labels;
 using TECS.Systems;
 
 namespace TECS.Scheduler
@@ -13,31 +14,29 @@ namespace TECS.Scheduler
         {
             _ecs = ecs;
         }
-        public void AddSystem(SystemBinding system, SystemPhase phase)
+
+        public void AddSystem<TSchedule>(SystemBinding system)
         {
             var schedulers = _ecs.GetResource<Schedulers>();
-            schedulers.schedulers[phase].AddSystem(system, phase);
+            schedulers.schedulers[typeof(TSchedule)].AddSystem<TSchedule>(system);
         }
 
-        public void RunPhase(SystemPhase phase, ECS ecs)
+        public void RunPhase(ECS ecs)
         {
             var schedulers = ecs.GetResource<Schedulers>();
-            if(!initialized)
+            if (!initialized)
             {
-                schedulers.schedulers[SystemPhase.StartUp].RunPhase(SystemPhase.StartUp,ecs);
+                schedulers.schedulers[typeof(Startup)].RunPhase(ecs);
                 initialized = true;
             }
-            
-            var phases = Enum.GetValues<SystemPhase>();
-            for(int i = 1; i < phases.Length; i++)
-            {
-                var p = phases[i];
-                schedulers.schedulers[p].RunPhase(p, ecs);
-            }
+
+            schedulers.schedulers[typeof(PreUpdate)].RunPhase(ecs);
+            schedulers.schedulers[typeof(StateTransition)].RunPhase(ecs);
+            schedulers.schedulers[typeof(Update)].RunPhase(ecs);
+
+            schedulers.schedulers[typeof(PostUpdate)].RunPhase(ecs);
         }
 
-        public void SetExecutor(IExecutor executor)
-        {
-        }
+        public void SetExecutor(IExecutor executor) { }
     }
 }

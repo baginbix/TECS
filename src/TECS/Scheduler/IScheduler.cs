@@ -1,4 +1,3 @@
-
 using TECS.Executors;
 using TECS.Systems;
 
@@ -11,8 +10,8 @@ namespace TECS.Scheduler
     public interface IScheduler
     {
         void SetExecutor(IExecutor executor);
-        void AddSystem(SystemBinding system, SystemPhase phase);
+        void AddSystem<TSchedule>(SystemBinding system);
 
-        void RunPhase(SystemPhase phase, ECS ecs);
+        void RunPhase(ECS ecs);
     }
 }
