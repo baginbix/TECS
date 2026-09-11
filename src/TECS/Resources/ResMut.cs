@@ -10,7 +10,7 @@ public ref struct ResMut<T>
     where T : IResource
 {
     private readonly ResourceStorage<T> storage;
-    public ref T Value => ref storage.GetResource();
+    public ref T Value => ref storage.GetResourceMut();
     private readonly bool isChanged;
 
     public bool IsChanged => isChanged;

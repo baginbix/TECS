@@ -19,7 +19,11 @@ namespace TECS.Resources
             _resource = resource;
         }
 
-        public ref T GetResource()
+        public ref T GetResourceMut()
+        {
+            return ref _resource;
+        }
+        public ref readonly T GetResource()
         {
             return ref _resource;
         }

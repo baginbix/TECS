@@ -129,7 +129,7 @@ namespace TECS
         {
             var value = (ResourceStorage<T>)resources[typeof(T)];
             value.UpdateLastTick((uint)GlobalTick);
-            return ref value.GetResource();
+            return ref value.GetResourceMut();
         }
 
         public OptionMut<T> TryGetResourceMut<T>()
