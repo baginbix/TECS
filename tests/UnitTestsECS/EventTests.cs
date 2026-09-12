@@ -17,7 +17,7 @@ namespace UnitTestsECS
         public static void MockSystemSendEvent(EventWriter<MockEvent> writer)
         {
             var e = new MockEvent(5);
-        
+
             writer.Send(e);
 
             EventSent = true; // Mark as run for the test
@@ -40,11 +40,11 @@ namespace UnitTestsECS
             var app = new App();
 
             // Register systems using your new auto-generated methods!
-            app.AddSystem(TestEventSystems.MockSystemSendEvent);
-            app.AddSystem(TestEventSystems.MockSystemReadEvent);
+            app.AddSystem<TECS.Scheduler.Labels.Update>(TestEventSystems.MockSystemSendEvent);
+            app.AddSystem<TECS.Scheduler.Labels.Update>(TestEventSystems.MockSystemReadEvent);
 
             return app;
-        } 
+        }
 
         [Fact]
         public void EventSystems_ShouldRunSuccessfully()

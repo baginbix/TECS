@@ -11,24 +11,24 @@ namespace TECS.Runner
     /// <summary>
     /// Runs the program once, then it's done.
     /// </summary>
-    public class RunnerOnce: IRunner
+    public class RunnerOnce : IRunner
     {
         private IScheduler _scheduler;
         bool initialized = false;
         private ECS ecs;
+
         public void Run(App _app)
         {
-            if(!initialized)
+            if (!initialized)
             {
                 ecs = _app.ecs;
                 ecs.InsertResource<Time.Time>();
-                initialized = true; 
+                initialized = true;
                 _scheduler = ecs.GetResource<MainScheduler>();
             }
-            _scheduler.RunPhase(SystemPhase.Update, ecs);
+            _scheduler.RunPhase(ecs);
             ecs.Flush();
-            ecs.NextTick(); 
+            ecs.NextTick();
         }
-
     }
 }

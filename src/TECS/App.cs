@@ -83,9 +83,9 @@ public partial class App
         return this;
     }
 
-    public App AddSystemBinding(SystemBinding systemBinding, SystemPhase phase)
+    public App AddSystemBinding<TSchedule>(SystemBinding systemBinding)
     {
-        _scheduler.AddSystem(systemBinding, phase);
+        _scheduler.AddSystem<TSchedule>(systemBinding);
         //systemManager.Add(systemBinding,phase);
         return this;
     }
@@ -127,9 +127,9 @@ public partial class App
         return this;
     }
 
-    public App SetScheduler(SystemPhase phase, IScheduler scheduler)
+    public App SetScheduler<TSchedule>(IScheduler scheduler)
     {
-        ecs.GetResource<Schedulers>().schedulers[phase] = scheduler;
+        ecs.GetResource<Schedulers>().schedulers[typeof(TSchedule)] = scheduler;
         return this;
     }
 

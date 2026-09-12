@@ -11,38 +11,31 @@ namespace TECS.Scheduler
     public class StandardSchedular : IScheduler
     {
         private IExecutor _executor;
-        private readonly Dictionary<SystemPhase, List<SystemItem>> _systems = new();
+        private readonly List<SystemItem> _systems = new();
         private bool _isDirty = true;
-        private readonly Dictionary<SystemPhase, List<SystemNode>> _graph = new();
+        private List<SystemNode> _graph = new();
 
         public StandardSchedular()
         {
             _executor = new MultiThreadExecutor();
-            foreach (SystemPhase phase in Enum.GetValues(typeof(SystemPhase)))
-            {
-                _systems[phase] = new();
-            }
         }
 
         public void SetExecutor(IExecutor executor) => _executor = executor;
 
-        public void AddSystem(SystemBinding system, SystemPhase stage)
+        public void AddSystem<T>(SystemBinding system)
         {
-            _systems[stage].Add(new() { System = system, LastRunTick = 0 });
+            _systems.Add(new() { System = system, LastRunTick = 0 });
             _isDirty = true;
         }
 
-        public void RunPhase(SystemPhase stage, ECS ecs)
+        public void RunPhase(ECS ecs)
         {
             if (_isDirty)
             {
-                foreach (var phase in _systems.Keys)
-                {
-                    _graph[phase] = BuildGraph(_systems[phase]);
-                }
+                _graph = BuildGraph(_systems);
                 _isDirty = false;
             }
-            _executor.Execute(_graph[stage], ecs);
+            _executor.Execute(_graph, ecs);
         }
 
         private List<SystemNode> BuildGraph(List<SystemItem> systems)

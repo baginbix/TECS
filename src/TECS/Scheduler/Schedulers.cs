@@ -1,25 +1,19 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TECS.Resources;
-using TECS.Systems;
+using TECS.Scheduler.Labels;
 
 namespace TECS.Scheduler
 {
-    public class Schedulers:IResource
+    public class Schedulers : IResource
     {
-        public readonly Dictionary<SystemPhase, IScheduler> schedulers = new(); 
+        public readonly Dictionary<Type, IScheduler> schedulers = new();
 
         public Schedulers()
         {
-            
-            var phases = Enum.GetValues<SystemPhase>();
-            for(int i = 0; i < phases.Length; i++)
-            {
-                var phase = phases[i];
-                schedulers[phase] = new StandardSchedular();
-            }
-        }  
+            schedulers[typeof(Startup)] = new StandardSchedular();
+            schedulers[typeof(StateTransition)] = new StandardSchedular();
+            schedulers[typeof(PreUpdate)] = new StandardSchedular();
+            schedulers[typeof(Update)] = new StandardSchedular();
+            schedulers[typeof(PostUpdate)] = new StandardSchedular();
+        }
     }
 }
