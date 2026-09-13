@@ -94,6 +94,9 @@ public partial class App
         where TState : struct, Enum
     {
         var stateManager = ecs.GetResource<StateManager<TState>>();
+        ((StateSchedule)ecs.GetResource<Schedulers>().schedulers[typeof(StateSchedule)]).AddManager(
+            stateManager
+        );
         stateManager.AddEnterSystem(state, binding);
         return this;
     }
@@ -102,6 +105,10 @@ public partial class App
         where TState : struct, Enum
     {
         var stateManager = ecs.GetResource<StateManager<TState>>();
+
+        ((StateSchedule)ecs.GetResource<Schedulers>().schedulers[typeof(StateSchedule)]).AddManager(
+            stateManager
+        );
         stateManager.AddUpdateSystem(state, binding);
         return this;
     }
@@ -110,6 +117,9 @@ public partial class App
         where TState : struct, Enum
     {
         var stateManager = ecs.GetResource<StateManager<TState>>();
+        ((StateSchedule)ecs.GetResource<Schedulers>().schedulers[typeof(StateSchedule)]).AddManager(
+            stateManager
+        );
         stateManager.AddExitSystem(state, binding);
         return this;
     }

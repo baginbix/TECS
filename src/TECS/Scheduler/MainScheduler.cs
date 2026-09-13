@@ -1,3 +1,4 @@
+using TECS.Commands;
 using TECS.Executors;
 using TECS.Resources;
 using TECS.Scheduler.Labels;
@@ -33,8 +34,10 @@ namespace TECS.Scheduler
             schedulers.schedulers[typeof(PreUpdate)].RunPhase(ecs);
             schedulers.schedulers[typeof(StateTransition)].RunPhase(ecs);
             schedulers.schedulers[typeof(Update)].RunPhase(ecs);
-
+            var cmd = new CommandBuffer();
+            ((StateSchedule)schedulers.schedulers[typeof(StateTransition)]).RunUpdate(ecs, cmd);
             schedulers.schedulers[typeof(PostUpdate)].RunPhase(ecs);
+            cmd.Flush(ecs);
         }
 
         public void SetExecutor(IExecutor executor) { }
