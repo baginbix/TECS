@@ -9,10 +9,15 @@ namespace TECS.Resources;
 public ref struct ResMut<T>
     where T : IResource
 {
-    public ref T Value;
+    private readonly ResourceStorage<T> storage;
+    public ref T Value => ref storage.GetResourceMut();
+    private readonly bool isChanged;
 
-    public ResMut(ref T value)
+    public bool IsChanged => isChanged;
+
+    public ResMut(ResourceStorage<T> storage, uint lastRunSystemTick)
     {
-        Value = ref value;
+        this.storage = storage;
+        this.isChanged = storage.LastChangedTick > lastRunSystemTick;
     }
 }

@@ -4,10 +4,17 @@ using TECS.Event;
 using TECS.Event;
 using TECS.Queries;
 using TECS.Resources;
+using TECS.Result;
 using TECS.Systems;
 
 namespace TECS
 {
+    public enum ResourceStatus
+    {
+        Success,
+        None,
+    }
+
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
     public class ECSSystemAttribute : Attribute { }
 
@@ -27,7 +34,7 @@ namespace TECS
             where T : IResource;
     }
 
-    public class ECS : IEngine
+    public class ECS
     {
         public ulong GlobalTick { get; private set; } = 1;
         EntityManager entityManager;
@@ -102,41 +109,41 @@ namespace TECS
             resources.Add(typeof(T), new ResourceStorage<T>(new T()));
         }
 
-        public ref T GetResource<T>()
+        public ref readonly T GetResource<T>()
             where T : IResource
         {
-#if DEBUG
-            if (resources.TryGetValue(typeof(T), out var value))
-            {
-                var storage = value as ResourceStorage<T>;
-                return ref storage.GetResource();
-            }
-            throw new InvalidOperationException(
-                $"The resource of type {typeof(T).Name} has not been added to the ECS!"
-            );
-# else
-            return ref (ResourceStorage<T>)(resources[typeof(T)]).GetResource();
-#endif
+            return ref ((ResourceStorage<T>)resources[typeof(T)]).GetResource();
         }
 
-        public T GetTResourceMut<T>()
-            where T : IResource
+        public Option<T> TryGetResource<T>()
         {
-#if DEBUG
             if (resources.TryGetValue(typeof(T), out var value))
             {
                 var storage = (ResourceStorage<T>)value;
-                storage.UpdateLastTick((uint)GlobalTick);
-                return storage.GetResource();
+                ref var result = ref storage.GetResource();
+                return new Option<T>(ref result);
             }
-            throw new InvalidOperationException(
-                $"The resource of type {typeof(T).Name} has not been added to the ECS!"
-            );
-# else
-            var value = resources[typeof(T)];
+
+            return Option<T>.None;
+        }
+
+        public ref T GetResourceMut<T>()
+            where T : IResource
+        {
+            var value = (ResourceStorage<T>)resources[typeof(T)];
             value.UpdateLastTick((uint)GlobalTick);
-            return (T)value.GetResource();
-#endif
+            return ref value.GetResourceMut();
+        }
+
+        public OptionMut<T> TryGetResourceMut<T>()
+        {
+            if (resources.TryGetValue(typeof(T), out var value))
+            {
+                var storage = value as ResourceStorage<T>;
+                storage.UpdateLastTick((uint)GlobalTick);
+                return new OptionMut<T>(ref storage.GetResource());
+            }
+            return OptionMut<T>.None;
         }
 
         /*

@@ -12,12 +12,18 @@ namespace TECS.Resources
         private T _resource;
         private uint _changedTick = 0;
 
+        public uint LastChangedTick => _changedTick;
+
         public ResourceStorage(T resource)
         {
             _resource = resource;
         }
 
-        public ref T GetResource()
+        public ref T GetResourceMut()
+        {
+            return ref _resource;
+        }
+        public ref readonly T GetResource()
         {
             return ref _resource;
         }
