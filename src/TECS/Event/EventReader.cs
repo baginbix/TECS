@@ -1,24 +1,27 @@
 using System.Data.Common;
+using System.Diagnostics;
 
 namespace TECS.Event;
 
-interface IEventReader{}
-public class EventReader<T>(EventManager manager) : IEventReader where T: struct
+interface IEventReader { }
+
+public class EventReader<T>(EventManager manager) : IEventReader
+    where T : struct
 {
     private int lastReadEventId = 0;
- 
 
-    public ReadOnlySpan<T> Read(  )
+    public ReadOnlySpan<T> Read()
     {
+        Debug.WriteLine("------------EventReader.Read----------");
         var stream = manager.GetOrCreateEventStream<T>();
         var readData = stream.Read();
 
-        if(lastReadEventId < readData.OldestID)
+        if (lastReadEventId < readData.OldestID)
         {
             lastReadEventId = readData.OldestID;
         }
-        
-        if(lastReadEventId == readData.TotalFired)
+
+        if (lastReadEventId == readData.TotalFired)
         {
             return ReadOnlySpan<T>.Empty;
         }
@@ -28,6 +31,8 @@ public class EventReader<T>(EventManager manager) : IEventReader where T: struct
 
         lastReadEventId = readData.TotalFired;
 
-        return readData.Data[startIndex..unreadCount];
+        Debug.WriteLine($"startIndex: {startIndex}   unreadCount: {unreadCount}");
+
+        return readData.Data[startIndex..(startIndex + unreadCount)];
     }
 }

@@ -31,7 +31,7 @@ namespace TECS.Executors
             phaseBarrier.Wait();
 
             foreach (var cmd in buffers)
-                cmd.Flush(engine);
+                engine.AddBuffer(cmd);
         }
 
         private void DispatchNode(

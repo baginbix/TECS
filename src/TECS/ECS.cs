@@ -1,3 +1,4 @@
+using TECS.Commands;
 using TECS.Components;
 using TECS.Event;
 using TECS.Event;
@@ -41,6 +42,8 @@ namespace TECS
         Dictionary<Type, IEventWriter> cachedWriters;
         Dictionary<(Type systemType, Type eventType), IEventReader> cachedReaders;
         EventManager eventManager = new();
+
+        List<CommandBuffer> _buffers = new();
 
         [ThreadStatic]
         private static Type activeSystem;
@@ -277,7 +280,14 @@ namespace TECS
 
         public void Flush()
         {
+            foreach (var cmd in _buffers)
+            {
+                cmd.Flush(this);
+            }
+            _buffers.Clear();
             eventManager.Flush();
         }
+
+        public void AddBuffer(CommandBuffer cmd) => _buffers.Add(cmd);
     }
 }

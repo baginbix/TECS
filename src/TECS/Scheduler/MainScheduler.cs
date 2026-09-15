@@ -29,15 +29,21 @@ namespace TECS.Scheduler
             {
                 schedulers.schedulers[typeof(Startup)].RunPhase(ecs);
                 initialized = true;
+                ecs.Flush();
             }
 
             schedulers.schedulers[typeof(PreUpdate)].RunPhase(ecs);
             schedulers.schedulers[typeof(StateTransition)].RunPhase(ecs);
+            ecs.Flush();
             schedulers.schedulers[typeof(Update)].RunPhase(ecs);
             var cmd = new CommandBuffer();
-            ((StateSchedule)schedulers.schedulers[typeof(StateTransition)]).RunUpdate(ecs, cmd);
+            var StateSchedule = (StateSchedule)schedulers.schedulers[typeof(StateTransition)];
+
+            StateSchedule.RunUpdate(ecs, cmd);
+
             schedulers.schedulers[typeof(PostUpdate)].RunPhase(ecs);
-            cmd.Flush(ecs);
+            ecs.AddBuffer(cmd);
+            ecs.Flush();
         }
 
         public void SetExecutor(IExecutor executor) { }

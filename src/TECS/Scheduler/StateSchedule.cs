@@ -24,7 +24,7 @@ class StateSchedule : IScheduler
             state.ProcessTransitions(ecs, ref cmd);
         }
 
-        cmd.Flush(ecs);
+        ecs.AddBuffer(cmd);
     }
 
     public void RunUpdate(ECS ecs, CommandBuffer cmd)

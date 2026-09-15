@@ -16,6 +16,6 @@ public class SingleThreadExecutor : IExecutor
         {
             system.System.System.Run(ecs, cmd, system.System.LastRunTick);
         }
-        cmd.Flush(ecs);
+        ecs.AddBuffer(cmd);
     }
 }
