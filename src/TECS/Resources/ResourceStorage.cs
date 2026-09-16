@@ -23,7 +23,8 @@ namespace TECS.Resources
         {
             return ref _resource;
         }
-        public ref readonly T GetResource()
+
+        public ref T GetResource()
         {
             return ref _resource;
         }

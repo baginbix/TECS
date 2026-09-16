@@ -4,12 +4,13 @@ namespace Generator;
 
 public abstract record SystemParam(string ParameterName, int Index)
 {
-    protected static string SanitizeTypeName(string typeName) => typeName
-        .Replace("global::", "")
-        .Replace(".", "_")
-        .Replace("<", "_")
-        .Replace(">", "_")
-        .Replace(",", "_");
+    protected static string SanitizeTypeName(string typeName) =>
+        typeName
+            .Replace("global::", "")
+            .Replace(".", "_")
+            .Replace("<", "_")
+            .Replace(">", "_")
+            .Replace(",", "_");
 
     /// <summary>Full C# type name for delegates (e.g., global::TECS.Query.Query<global::Position>)</summary>
     public abstract string FullTypeName { get; }
@@ -34,8 +35,7 @@ public record QueryParam(string ParameterName, int Index, string StructType)
     : SystemParam(ParameterName, Index)
 {
     public override string FullTypeName => $"global::TECS.Query.Query<{StructType}>";
-    public override string TypeSignatureId =>
-        "Query_" + SanitizeTypeName(StructType);
+    public override string TypeSignatureId => "Query_" + SanitizeTypeName(StructType);
 
     public override string GenerateArgumentCode() =>
         $"new global::TECS.Query.Query<{StructType}>(ecs, systemTick)";
@@ -60,8 +60,7 @@ public record EventReaderParam(string ParameterName, int Index, string EventType
     : SystemParam(ParameterName, Index)
 {
     public override string FullTypeName => $"global::TECS.Event.EventReader<{EventType}>";
-    public override string TypeSignatureId =>
-        "EventReader_" + SanitizeTypeName(EventType);
+    public override string TypeSignatureId => "EventReader_" + SanitizeTypeName(EventType);
 
     public override string? GenerateSetupCode() =>
         $"var reader_{Index} = ecs.GetEventReader<{EventType}>();";
@@ -75,8 +74,7 @@ public record EventWriterParam(string ParameterName, int Index, string EventType
     : SystemParam(ParameterName, Index)
 {
     public override string FullTypeName => $"global::TECS.Event.EventWriter<{EventType}>";
-    public override string TypeSignatureId =>
-        "EventWriter_" + SanitizeTypeName(EventType);
+    public override string TypeSignatureId => "EventWriter_" + SanitizeTypeName(EventType);
 
     public override string? GenerateSetupCode() =>
         $"var writer_{Index} = ecs.GetEventWriter<{EventType}>();";
@@ -90,11 +88,10 @@ public record ResParam(string ParameterName, int Index, string ResourceType)
     : SystemParam(ParameterName, Index)
 {
     public override string FullTypeName => $"global::TECS.Resources.Res<{ResourceType}>";
-    public override string TypeSignatureId =>
-        "Res_" + SanitizeTypeName(ResourceType);
+    public override string TypeSignatureId => "Res_" + SanitizeTypeName(ResourceType);
 
     public override string? GenerateSetupCode() =>
-        $"var res_{Index} = new global::TECS.Resources.Res<{ResourceType}>(ref ecs.GetResource<{ResourceType}>());";
+        $"var res_{Index} = new global::TECS.Resources.Res<{ResourceType}>(ecs.GetResource<{ResourceType}>(), systemTick);";
 
     public override string GenerateArgumentCode() => $"res_{Index}";
 
@@ -105,11 +102,10 @@ public record ResMutParam(string ParameterName, int Index, string ResourceType)
     : SystemParam(ParameterName, Index)
 {
     public override string FullTypeName => $"global::TECS.Resources.ResMut<{ResourceType}>";
-    public override string TypeSignatureId =>
-        "ResMut_" + SanitizeTypeName(ResourceType);
+    public override string TypeSignatureId => "ResMut_" + SanitizeTypeName(ResourceType);
 
     public override string? GenerateSetupCode() =>
-        $"var resMut_{Index} = new global::TECS.Query.ResMut<{ResourceType}>(ref ecs.GetResource<ResourceType>());";
+        $"var resMut_{Index} = new global::TECS.Query.ResMut<{ResourceType}>(ecs.GetResource<ResourceType>(), systemTick);";
 
     public override string GenerateArgumentCode() => $"resMut_{Index}";
 

@@ -18,13 +18,13 @@ namespace TECS.Scheduler
 
         public void AddSystem<TSchedule>(SystemBinding system)
         {
-            var schedulers = _ecs.GetResource<Schedulers>();
+            var schedulers = _ecs.GetResource<Schedulers>().GetResource();
             schedulers.schedulers[typeof(TSchedule)].AddSystem<TSchedule>(system);
         }
 
         public void RunPhase(ECS ecs)
         {
-            var schedulers = ecs.GetResource<Schedulers>();
+            var schedulers = ecs.GetResource<Schedulers>().GetResource();
             if (!initialized)
             {
                 schedulers.schedulers[typeof(Startup)].RunPhase(ecs);

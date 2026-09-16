@@ -20,29 +20,21 @@ namespace TECS.Executors
             }
 
             using var phaseBarrier = new CountdownEvent(phaseNodes.Count);
-            List<CommandBuffer> buffers = new(10);
+
             foreach (var starter in starters)
             {
-                CommandBuffer cmd = new();
-                buffers.Add(cmd);
-                DispatchNode(starter, engine, cmd, phaseBarrier);
+                DispatchNode(starter, engine, phaseBarrier);
             }
 
             phaseBarrier.Wait();
-
-            foreach (var cmd in buffers)
-                engine.AddBuffer(cmd);
         }
 
-        private void DispatchNode(
-            SystemNode node,
-            ECS engine,
-            CommandBuffer cmd,
-            CountdownEvent phaseBarrier
-        )
+        private void DispatchNode(SystemNode node, ECS engine, CountdownEvent phaseBarrier)
         {
             ThreadPool.QueueUserWorkItem(_ =>
             {
+                var cmd = new CommandBuffer();
+
                 try
                 {
                     node.System.System.Run(engine, cmd, node.System.LastRunTick);
@@ -50,11 +42,12 @@ namespace TECS.Executors
                 }
                 finally
                 {
+                    engine.AddBuffer(cmd);
                     foreach (var dependant in node.Dependents)
                     {
                         if (Interlocked.Decrement(ref dependant.CurrentDependencyCount) == 0)
                         {
-                            DispatchNode(dependant, engine, cmd, phaseBarrier);
+                            DispatchNode(dependant, engine, phaseBarrier);
                         }
                     }
                     phaseBarrier.Signal();

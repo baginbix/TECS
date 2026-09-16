@@ -49,12 +49,12 @@ public ref struct OptionMut<T>
 /// <typeparam name="T"></typeparam>
 public readonly ref struct Option<T>
 {
-    private readonly ref T value;
+    private readonly ref readonly T value;
 
     public readonly bool IsSome;
     public bool IsNone => !IsSome;
 
-    public Option(ref T value)
+    public Option(ref readonly T value)
     {
         this.value = ref value;
         IsSome = true;
@@ -68,7 +68,7 @@ public readonly ref struct Option<T>
 
     public static Option<T> None => new Option<T>();
 
-    public readonly ref T Unwrap()
+    public readonly ref readonly T Unwrap()
     {
 #if DEBUG
         if (IsNone)

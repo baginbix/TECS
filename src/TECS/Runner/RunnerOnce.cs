@@ -24,7 +24,7 @@ namespace TECS.Runner
                 ecs = _app.ecs;
                 ecs.InsertResource<Time.Time>();
                 initialized = true;
-                _scheduler = ecs.GetResource<MainScheduler>();
+                _scheduler = ecs.GetResource<MainScheduler>().GetResource();
             }
             _scheduler.RunPhase(ecs);
             ecs.Flush();

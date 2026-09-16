@@ -5,6 +5,7 @@ using TECS.Query;
 using TECS.Resources;
 using TECS.Runner;
 using TECS.Scheduler;
+using TECS.Scheduler.Labels;
 using TECS.Systems;
 
 namespace TECS;
@@ -93,10 +94,11 @@ public partial class App
     public App AddSystemOnEnter<TState>(TState state, SystemBinding binding)
         where TState : struct, Enum
     {
-        var stateManager = ecs.GetResource<StateManager<TState>>();
-        ((StateSchedule)ecs.GetResource<Schedulers>().schedulers[typeof(StateSchedule)]).AddManager(
-            stateManager
-        );
+        var stateManager = ecs.GetResource<StateManager<TState>>().GetResource();
+        (
+            (StateSchedule)
+                ecs.GetResource<Schedulers>().GetResource().schedulers[typeof(StateTransition)]
+        ).AddManager(stateManager);
         stateManager.AddEnterSystem(state, binding);
         return this;
     }
@@ -104,11 +106,10 @@ public partial class App
     public App AddSystemOnUpdate<TState>(TState state, SystemBinding binding)
         where TState : struct, Enum
     {
-        var stateManager = ecs.GetResource<StateManager<TState>>();
+        var stateManager = ecs.GetResource<StateManager<TState>>().GetResource();
 
-        ((StateSchedule)ecs.GetResource<Schedulers>().schedulers[typeof(StateSchedule)]).AddManager(
-            stateManager
-        );
+        var schedulers = ecs.GetResource<Schedulers>().GetResource();
+        ((StateSchedule)schedulers.schedulers[typeof(StateTransition)]).AddManager(stateManager);
         stateManager.AddUpdateSystem(state, binding);
         return this;
     }
@@ -116,10 +117,11 @@ public partial class App
     public App AddSystemOnExit<TState>(TState state, SystemBinding binding)
         where TState : struct, Enum
     {
-        var stateManager = ecs.GetResource<StateManager<TState>>();
-        ((StateSchedule)ecs.GetResource<Schedulers>().schedulers[typeof(StateSchedule)]).AddManager(
-            stateManager
-        );
+        var stateManager = ecs.GetResource<StateManager<TState>>().GetResource();
+        (
+            (StateSchedule)
+                ecs.GetResource<Schedulers>().GetResource().schedulers[typeof(StateTransition)]
+        ).AddManager(stateManager);
         stateManager.AddExitSystem(state, binding);
         return this;
     }
@@ -139,7 +141,7 @@ public partial class App
 
     public App SetScheduler<TSchedule>(IScheduler scheduler)
     {
-        ecs.GetResource<Schedulers>().schedulers[typeof(TSchedule)] = scheduler;
+        ecs.GetResource<Schedulers>().GetResource().schedulers[typeof(TSchedule)] = scheduler;
         return this;
     }
 

@@ -24,7 +24,7 @@ namespace TECS
             where TEvent : struct;
         EventReader<TEvent> GetEventReader<TEvent>()
             where TEvent : struct;
-        OptionRef<T> QueryComponent<T>(Entity entity)
+        OptionMut<T> QueryComponent<T>(Entity entity)
             where T : struct;
         Option<T> QueryReadonlyComponent<T>(Entity entity)
             where T : struct;
@@ -109,10 +109,10 @@ namespace TECS
             resources.Add(typeof(T), new ResourceStorage<T>(new T()));
         }
 
-        public ref readonly T GetResource<T>()
+        public ResourceStorage<T> GetResource<T>()
             where T : IResource
         {
-            return ref ((ResourceStorage<T>)resources[typeof(T)]).GetResource();
+            return (ResourceStorage<T>)resources[typeof(T)];
         }
 
         public Option<T> TryGetResource<T>()
@@ -127,12 +127,12 @@ namespace TECS
             return Option<T>.None;
         }
 
-        public ref T GetResourceMut<T>()
+        public ResourceStorage<T> GetResourceMut<T>()
             where T : IResource
         {
             var value = (ResourceStorage<T>)resources[typeof(T)];
             value.UpdateLastTick((uint)GlobalTick);
-            return ref value.GetResourceMut();
+            return value;
         }
 
         public OptionMut<T> TryGetResourceMut<T>()
@@ -233,7 +233,7 @@ namespace TECS
             entityMasks[entityId.Id].ClearBit(ComponentID<T>.Value);
         }
 
-        public OptionRef<T> QueryComponent<T>(Entity entity)
+        public OptionMut<T> QueryComponent<T>(Entity entity)
             where T : struct
         {
             var set = GetOrCreateSet<T>();
@@ -295,6 +295,12 @@ namespace TECS
             eventManager.Flush();
         }
 
-        public void AddBuffer(CommandBuffer cmd) => _buffers.Add(cmd);
+        public void AddBuffer(CommandBuffer cmd)
+        {
+            lock (_buffers)
+            {
+                _buffers.Add(cmd);
+            }
+        }
     }
 }
