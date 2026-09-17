@@ -8,15 +8,15 @@ namespace TECS.Resources;
 public readonly ref struct Res<T>
     where T : IResource
 {
-    private readonly ResourceStorage<T> storage;
-    public ref readonly T Value => ref storage.GetResource();
+    private readonly ref T storage;
+    public ref readonly T Value => ref storage;
     private readonly bool isChanged;
 
     public bool IsChanged => isChanged;
 
     public Res(ResourceStorage<T> storage, uint lastRunSystemTick)
     {
-        this.storage = storage;
+        this.storage = ref storage.GetResource();
         isChanged = storage.LastChangedTick > lastRunSystemTick;
     }
 }
