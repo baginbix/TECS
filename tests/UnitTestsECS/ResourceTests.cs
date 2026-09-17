@@ -16,10 +16,14 @@ namespace UnitTestsECS
             public int Value { get; set; }
         }
 
-        private static ResourceStorage<TestResource> GetResourceStorage(ECS ecs) { 
-            var resourcesField = typeof(ECS).GetField("resources", BindingFlags.Instance | BindingFlags.NonPublic); 
-            var resources = (Dictionary<Type, IResourceStorage>)resourcesField!.GetValue(ecs)!; 
-            return (ResourceStorage<TestResource>)resources[typeof(TestResource)]; 
+        private static ResourceStorage<TestResource> GetResourceStorage(ECS ecs)
+        {
+            var resourcesField = typeof(ECS).GetField(
+                "resources",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            var resources = (Dictionary<Type, IResourceStorage>)resourcesField!.GetValue(ecs)!;
+            return (ResourceStorage<TestResource>)resources[typeof(TestResource)];
         }
 
         [Fact]
@@ -78,7 +82,7 @@ namespace UnitTestsECS
             var resMut = new ResMut<TestResource>(storage, 0);
             resMut.Value.Value = 42;
 
-            Assert.Equal(42, ecs.GetResource<TestResource>().Value);
+            Assert.Equal(42, ecs.GetResource<TestResource>().GetResource().Value);
         }
     }
 }
