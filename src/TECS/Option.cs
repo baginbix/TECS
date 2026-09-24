@@ -1,8 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 
 namespace TECS.Result;
 
@@ -10,35 +7,37 @@ namespace TECS.Result;
 /// Contains a reference that's allowed to be changed
 /// </summary>
 /// <typeparam name="T"></typeparam>
+[Obsolete("Note to self: Change these to Option so i can remove OptionMut")]
 public ref struct OptionMut<T>
 {
     private readonly ref T value;
+    private readonly bool _isSome;
 
-    public readonly bool IsSome;
+    public bool IsSome => _isSome;
     public bool IsNone => !IsSome;
 
     public OptionMut(ref T value)
     {
         this.value = ref value;
-        IsSome = true;
+        _isSome = true;
     }
 
     public OptionMut()
     {
         value = ref Unsafe.NullRef<T>();
-        IsSome = false;
+        _isSome = false;
     }
 
-    public static OptionMut<T> None => new OptionMut<T>();
+    public static OptionMut<T> None() => new OptionMut<T>();
+
+    public static OptionMut<T> Some(ref T value) => new OptionMut<T>(ref value);
 
     public ref T Unwrap()
     {
-#if DEBUG
-        if (IsNone)
-        {
-            throw new InvalidOperationException("Tried to unwrap a None OptionRef!");
-        }
-#endif
+        Debug.Assert(
+            _isSome,
+            $"Tried to unwrap a value that doesn't have a value of type:{typeof(T)}"
+        );
         return ref value;
     }
 }
@@ -49,33 +48,33 @@ public ref struct OptionMut<T>
 /// <typeparam name="T"></typeparam>
 public readonly ref struct Option<T>
 {
-    private readonly ref readonly T value;
-
-    public readonly bool IsSome;
+    private readonly ref T _value;
+    private readonly bool _isSome;
+    public bool IsSome => _isSome;
     public bool IsNone => !IsSome;
 
-    public Option(ref readonly T value)
+    public Option(ref T value)
     {
-        this.value = ref value;
-        IsSome = true;
+        this._value = ref value;
+        _isSome = true;
     }
 
     public Option()
     {
-        value = ref Unsafe.NullRef<T>();
-        IsSome = false;
+        _value = ref Unsafe.NullRef<T>();
+        _isSome = false;
     }
 
-    public static Option<T> None => new Option<T>();
+    public static Option<T> Some(ref T value) => new Option<T>(ref value);
 
-    public readonly ref readonly T Unwrap()
+    public static Option<T> None() => new Option<T>();
+
+    public T Unwrap()
     {
-#if DEBUG
-        if (IsNone)
-        {
-            throw new InvalidOperationException("Tried to unwrap a None OptionRef!");
-        }
-#endif
-        return ref value;
+        Debug.Assert(
+            _isSome,
+            $"Tried to unwrap a value that doesn't have a value of type:{typeof(T)}"
+        );
+        return _value;
     }
 }
