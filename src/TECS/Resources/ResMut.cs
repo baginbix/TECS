@@ -15,7 +15,7 @@ public ref struct ResMut<T>
 
     public bool IsChanged => isChanged;
 
-    public ResMut(ResourceStorage<T> storage, uint lastRunSystemTick)
+    public ResMut(ResourceStorage<T> storage, Tick lastRunSystemTick)
     {
         this.storage = ref storage.GetResource();
         this.isChanged = storage.LastChangedTick > lastRunSystemTick;

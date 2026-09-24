@@ -6,9 +6,9 @@ public readonly ref struct Query<T>
     where T : allows ref struct
 {
     public readonly ECS World;
-    public readonly uint SystemTick;
+    public readonly Tick SystemTick;
 
-    public Query(ECS world, uint systemTick)
+    public Query(ECS world, Tick systemTick)
     {
         World = world;
         SystemTick = systemTick;

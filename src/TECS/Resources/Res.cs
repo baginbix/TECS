@@ -14,7 +14,7 @@ public readonly ref struct Res<T>
 
     public bool IsChanged => isChanged;
 
-    public Res(ResourceStorage<T> storage, uint lastRunSystemTick)
+    public Res(ResourceStorage<T> storage, Tick lastRunSystemTick)
     {
         this.storage = ref storage.GetResource();
         isChanged = storage.LastChangedTick > lastRunSystemTick;

@@ -10,9 +10,9 @@ namespace TECS.Resources
     public class ResourceStorage<T> : IResourceStorage
     {
         private T _resource;
-        private uint _changedTick = 0;
+        private Tick _changedTick = 0;
 
-        public uint LastChangedTick => _changedTick;
+        public Tick LastChangedTick => _changedTick;
 
         public ResourceStorage(T resource)
         {
@@ -29,7 +29,7 @@ namespace TECS.Resources
             return ref _resource;
         }
 
-        public void UpdateLastTick(uint currentTick)
+        public void UpdateLastTick(Tick currentTick)
         {
             _changedTick = currentTick;
         }

@@ -22,7 +22,7 @@ namespace TECS
         public const int PAGE_MASK = PAGE_SIZE - 1;
 
         List<T> dense;
-        List<uint> ticks;
+        List<Tick> ticks;
         List<Entity> denseEntities = new List<Entity>();
         int[][] sparse;
         private static readonly bool isTag =
@@ -38,10 +38,10 @@ namespace TECS
 
             int numPages = (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
             sparse = new int[numPages][];
-            ticks = new List<uint>(size);
+            ticks = new List<Tick>(size);
         }
 
-        public void Add(Entity entity, T data, uint currentTick)
+        public void Add(Entity entity, T data, Tick currentTick)
         {
             int pageIndex = entity.Id >> PAGE_SHIFT;
             int pageOffset = entity.Id & PAGE_MASK;
@@ -113,18 +113,18 @@ namespace TECS
             return ref CollectionsMarshal.AsSpan(dense)[index];
         }
         */
-        public OptionMut<T> GetValue(Entity entity, uint currentTick)
+        public OptionMut<T> GetValue(Entity entity, Tick currentTick)
         {
             int pageIndex = entity.Id >> PAGE_SHIFT;
             int pageOffset = entity.Id & PAGE_MASK;
             if (pageIndex >= sparse.Length || sparse[pageIndex] == null)
-                return OptionMut<T>.None;
+                return OptionMut<T>.None();
 
             int index = sparse[pageIndex][pageOffset];
             if (index == -1)
-                return OptionMut<T>.None;
+                return OptionMut<T>.None();
             if (denseEntities[index].Version != entity.Version)
-                return OptionMut<T>.None;
+                return OptionMut<T>.None();
             ticks[entity.Id] = currentTick;
             return new OptionMut<T>(ref CollectionsMarshal.AsSpan(dense)[index]);
         }
@@ -134,13 +134,13 @@ namespace TECS
             int pageIndex = entity.Id >> PAGE_SHIFT;
             int pageOffset = entity.Id & PAGE_MASK;
             if (pageIndex >= sparse.Length || sparse[pageIndex] == null)
-                return Option<T>.None;
+                return Option<T>.None();
 
             int index = sparse[pageIndex][pageOffset];
             if (index == -1)
-                return Option<T>.None;
+                return Option<T>.None();
             if (denseEntities[index].Version != entity.Version)
-                return Option<T>.None;
+                return Option<T>.None();
             return new Option<T>(ref CollectionsMarshal.AsSpan(dense)[index]);
         }
 
@@ -163,7 +163,7 @@ namespace TECS
             return denseEntities;
         }
 
-        public Span<uint> GetLastTicks() => CollectionsMarshal.AsSpan(ticks);
+        public Span<Tick> GetLastTicks() => CollectionsMarshal.AsSpan(ticks);
 
         public int[][] GetSparseSet() => sparse;
     }

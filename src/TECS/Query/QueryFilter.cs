@@ -2,7 +2,7 @@
 using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using TECS.Components;
-
+//TODO: Remove QueryFilter
 namespace TECS.Queries
 {
     public struct QueryFilter

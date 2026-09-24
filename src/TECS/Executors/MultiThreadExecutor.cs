@@ -38,7 +38,7 @@ namespace TECS.Executors
                 try
                 {
                     node.System.System.Run(engine, cmd, node.System.LastRunTick);
-                    node.System.LastRunTick = (uint)engine.GlobalTick;
+                    node.System.LastRunTick = engine.GlobalTick;
                 }
                 finally
                 {

@@ -36,7 +36,7 @@ namespace TECS
 
     public class ECS
     {
-        public ulong GlobalTick { get; private set; } = 1;
+        public Tick GlobalTick { get; private set; } = 1;
         EntityManager entityManager;
         ISparseSet[] components;
 
@@ -79,7 +79,7 @@ namespace TECS
 
         public void SetActiveSystem(Type system) => activeSystem = system;
 
-        public void SetLastSystemTick(ulong tick) => currentSystemLastTick = tick;
+        public void SetLastSystemTick(Tick tick) => currentSystemLastTick = tick;
 
         public Entity CreateEntity()
         {
@@ -124,14 +124,14 @@ namespace TECS
                 return new Option<T>(ref result);
             }
 
-            return Option<T>.None;
+            return Option<T>.None();
         }
 
         public ResourceStorage<T> GetResourceMut<T>()
             where T : IResource
         {
             var value = (ResourceStorage<T>)resources[typeof(T)];
-            value.UpdateLastTick((uint)GlobalTick);
+            value.UpdateLastTick(GlobalTick);
             return value;
         }
 
@@ -140,10 +140,10 @@ namespace TECS
             if (resources.TryGetValue(typeof(T), out var value))
             {
                 var storage = value as ResourceStorage<T>;
-                storage.UpdateLastTick((uint)GlobalTick);
+                storage.UpdateLastTick(GlobalTick);
                 return new OptionMut<T>(ref storage.GetResource());
             }
-            return OptionMut<T>.None;
+            return OptionMut<T>.None();
         }
 
         /*
@@ -159,7 +159,7 @@ namespace TECS
             int typeId = ComponentID<T>.Value;
             SparseSet<T> set = GetOrCreateSet<T>();
 
-            set.Add(entityId, component, (uint)GlobalTick);
+            set.Add(entityId, component, GlobalTick);
             entityMasks[entityId.Id].SetBit(typeId);
         }
 
@@ -191,9 +191,9 @@ namespace TECS
             where E : struct
             where K : struct
         {
-            var optT = GetOrCreateSet<T>().GetValue(entity, (uint)GlobalTick);
-            var optE = GetOrCreateSet<E>().GetValue(entity, (uint)GlobalTick);
-            var optK = GetOrCreateSet<K>().GetValue(entity, (uint)GlobalTick);
+            var optT = GetOrCreateSet<T>().GetValue(entity, GlobalTick);
+            var optE = GetOrCreateSet<E>().GetValue(entity, GlobalTick);
+            var optK = GetOrCreateSet<K>().GetValue(entity, GlobalTick);
 
             if (optT.IsNone || optE.IsNone || optK.IsNone)
             {
@@ -237,7 +237,7 @@ namespace TECS
             where T : struct
         {
             var set = GetOrCreateSet<T>();
-            return set.GetValue(entity, (uint)GlobalTick);
+            return set.GetValue(entity, GlobalTick);
         }
 
         public Option<T> QueryReadonlyComponent<T>(Entity entity)
