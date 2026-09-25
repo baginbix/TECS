@@ -1,9 +1,7 @@
-using System.ComponentModel;
-using System.Security.AccessControl;
 using TECS;
 using TECS.Commands;
 using TECS.Query;
-using Xunit;
+using TECS.Result;
 
 namespace UnitTestsECS
 {
@@ -91,9 +89,22 @@ namespace UnitTestsECS
         public ref Velocity vel;
     }
 
+    [Query]
+    public ref struct OptionalQuery
+    {
+        public ref Position position;
+        public Option<Velocity> optionalVel;
+    }
+
+    [Query]
+    public ref struct OptionalMutQuery
+    {
+        public ref Position position;
+        public OptionMut<Velocity> optionVel;
+    }
+
     public record struct Data(int X);
 
-    // 3. Define the Systems for testing
     public static class TestSystems
     {
         [System]
@@ -118,7 +129,6 @@ namespace UnitTestsECS
         public static void QuerySingle(Query<MovementQuery> query)
         {
             var item = query.Single();
-            item.Pos.X += item.Vel.Dx;
         }
     }
 
@@ -130,11 +140,9 @@ namespace UnitTestsECS
             var ecs = new ECS();
             var entity = ecs.CreateEntity();
 
-            var exceptions = Record.Exception(() =>
-                TestSystems.QueryNothing(new Query<NothingQuery>(ecs, 0))
-            );
-
-            Assert.Null(exceptions);
+            var query = new Query<NothingQuery>(ecs, 0);
+            var nothing = query.Single();
+            Assert.Equal(QuerySingleError.Empty, nothing.Error);
         }
 
         [Theory]
@@ -174,9 +182,10 @@ namespace UnitTestsECS
             ecs.InsertComponent(entity2, new Position { X = 10 });
             ecs.InsertComponent(entity2, new Velocity { Dx = 15 });
 
-            Assert.Throws<InvalidOperationException>(() =>
-                TestSystems.QuerySingle(new Query<MovementQuery>(ecs, 0))
-            );
+            var query = new Query<MovementQuery>(ecs, 0);
+            var item = query.Single();
+
+            Assert.Equal(QuerySingleError.Multiple, item.Error);
         }
 
         [Fact]
@@ -353,14 +362,98 @@ namespace UnitTestsECS
         public void Query_ASpan_GetSpanOfComponents()
         {
             var ecs = new ECS();
- 
+
             for (int i = 0; i < 1; i++)
-            { 
+            {
                 var entity = ecs.CreateEntity();
                 ecs.InsertComponent(entity, new Position { X = 5 });
             }
-            var q = new Query<SpanQuery>(ecs,0);
-            Assert.Equal(1,q.Single().positions.Length);
+            var q = new Query<SpanQuery>(ecs, 0);
+            Assert.Equal(1, q.Single().positions.Length);
+        }
+
+        [Fact]
+        public void Query_OptionalComponent_HaveOptionalVelocity()
+        {
+            var world = new ECS();
+
+            var entity = world.CreateEntity();
+            world.InsertComponent(entity, new Position { X = 2 });
+
+            entity = world.CreateEntity();
+            world.InsertComponent(entity, new Position { X = 42 });
+            world.InsertComponent(entity, new Velocity { Dx = 42 });
+
+            var q = new Query<OptionalQuery>(world, 0);
+            var actualCount = 0;
+            foreach (var query in q)
+            {
+                actualCount++;
+                if (query.optionalVel.IsSome)
+                    Assert.Equal(42, query.optionalVel.Unwrap().Dx);
+            }
+
+            Assert.Equal(2, actualCount);
+        }
+
+        [Fact]
+        public void Query_OptionalComponent_HaveOptionalMutVelocity()
+        {
+            var world = new ECS();
+
+            var entity = world.CreateEntity();
+            world.InsertComponent(entity, new Position { X = 2 });
+
+            entity = world.CreateEntity();
+            world.InsertComponent(entity, new Position { X = 42 });
+            world.InsertComponent(entity, new Velocity { Dx = 42 });
+
+            var q = new Query<OptionalMutQuery>(world, 0);
+            var actualCount = 0;
+            foreach (var query in q)
+            {
+                actualCount++;
+                if (query.optionVel.IsSome)
+                    Assert.Equal(42, query.optionVel.Unwrap().Dx);
+            }
+
+            Assert.Equal(2, actualCount);
+        }
+
+        [Fact]
+        public void Query_Get_Success()
+        {
+            var world = new ECS();
+
+            var entity = world.CreateEntity();
+            world.InsertComponent(entity, new Position { X = 2 });
+
+            entity = world.CreateEntity();
+            world.InsertComponent(entity, new Position { X = 42 });
+            world.InsertComponent(entity, new Velocity { Dx = 42 });
+
+            var q = new Query<MovementQuery>(world, 0);
+            var comps = q.Get(entity);
+
+            Assert.True(comps.IsSome);
+        }
+
+        [Fact]
+        public void Query_Get_Failure()
+        {
+            var world = new ECS();
+
+            var entity = world.CreateEntity();
+            world.InsertComponent(entity, new Position { X = 2 });
+
+            var entity2 = world.CreateEntity();
+            world.InsertComponent(entity2, new Position { X = 42 });
+            world.InsertComponent(entity2, new Velocity { Dx = 42 });
+
+            var q = new Query<MovementQuery>(world, 0);
+            var comps = q.Get(entity);
+
+            Assert.True(comps.IsNone);
         }
     }
-} 
+}

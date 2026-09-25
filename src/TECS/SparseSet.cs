@@ -68,6 +68,7 @@ namespace TECS
             if (!isTag)
             {
                 dense.Add(data);
+                if (ticks.Count < entity.Id) { }
                 ticks.Add(currentTick);
             }
             denseEntities.Add(entity);
@@ -125,7 +126,7 @@ namespace TECS
                 return OptionMut<T>.None();
             if (denseEntities[index].Version != entity.Version)
                 return OptionMut<T>.None();
-            ticks[entity.Id] = currentTick;
+            ticks[index] = currentTick;
             return new OptionMut<T>(ref CollectionsMarshal.AsSpan(dense)[index]);
         }
 

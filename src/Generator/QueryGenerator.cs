@@ -21,7 +21,8 @@ public class QueryGenerator : IIncrementalGenerator
         List<QueryField> Fields,
         List<string> WithTypes,
         List<string> WithoutTypes,
-        List<string> ChangedTypes
+        List<string> ChangedTypes,
+        List<QueryField> Optionals
     );
 
     // --- Initialization ---
@@ -57,7 +58,6 @@ public class QueryGenerator : IIncrementalGenerator
         );
     }
 
- 
     static string GetNamespace(INamedTypeSymbol symbol)
     {
         // If the struct isn't wrapped in a namespace, it's in the global namespace.
@@ -98,102 +98,123 @@ public class QueryGenerator : IIncrementalGenerator
     }
 
     // --- Phase 1: Parsing ---
-private static QueryModel ParseQueryModel(StructDeclarationSyntax structDecl, string Namespace)
-{
-    if (structDecl.TypeParameterList != null)
-        return null;
-
-    var withTypes = new List<string>();
-    var withoutTypes = new List<string>();
-    var changedTypes = new List<string>();
-    bool isQuery = false;
-    bool isSpan = true; 
-
-    foreach (var attrList in structDecl.AttributeLists)
+    private static QueryModel ParseQueryModel(StructDeclarationSyntax structDecl, string Namespace)
     {
-        foreach (var attr in attrList.Attributes)
+        if (structDecl.TypeParameterList != null)
+            return null;
+
+        var withTypes = new List<string>();
+        var withoutTypes = new List<string>();
+        var changedTypes = new List<string>();
+        bool isQuery = false;
+        bool isSpan = true;
+
+        foreach (var attrList in structDecl.AttributeLists)
         {
-            if (attr.Name is IdentifierNameSyntax nameSyntax)
+            foreach (var attr in attrList.Attributes)
             {
-                if (nameSyntax.Identifier.Text is "Query")
-                    isQuery = true;
+                if (attr.Name is IdentifierNameSyntax nameSyntax)
+                {
+                    if (nameSyntax.Identifier.Text is "Query")
+                        isQuery = true;
+                }
+                else if (attr.Name is GenericNameSyntax genericName)
+                {
+                    string attrName = genericName.Identifier.Text;
+                    string typeArg = genericName.TypeArgumentList.Arguments[0].ToString();
+
+                    if (attrName == "With")
+                        withTypes.Add(typeArg);
+                    else if (attrName == "Without")
+                        withoutTypes.Add(typeArg);
+                    else if (attrName == "Changed")
+                        changedTypes.Add(typeArg);
+                }
             }
-            else if (attr.Name is GenericNameSyntax genericName)
+        }
+
+        if (!isQuery)
+            return null;
+
+        string entityFieldName = null;
+        var fields = new List<QueryField>();
+        var optional = new List<QueryField>();
+
+        foreach (var f in structDecl.Members.OfType<FieldDeclarationSyntax>())
+        {
+            TypeSyntax typeSyntax = f.Declaration.Type;
+            string rawType = typeSyntax.ToString();
+            string cleanType = rawType;
+            bool fieldIsSpan = false;
+            bool fieldIsOptional = false;
+            // Unwrap Span<T> to extract 'T' (e.g. Position) for SparseSet lookups
+            if (typeSyntax is GenericNameSyntax genericType)
             {
-                string attrName = genericName.Identifier.Text;
-                string typeArg = genericName.TypeArgumentList.Arguments[0].ToString();
+                if (genericType.Identifier.Text == "Span")
+                {
+                    cleanType = genericType.TypeArgumentList.Arguments[0].ToString();
+                    fieldIsSpan = true;
+                }
+                else if (genericType.Identifier.Text == "Option")
+                {
+                    cleanType = genericType.TypeArgumentList.Arguments[0].ToString();
+                    fieldIsOptional = true;
+                }
+            }
+            else if (typeSyntax is RefTypeSyntax refType)
+            {
+                cleanType = refType.Type.ToString();
+            }
 
-                if (attrName == "With")
-                    withTypes.Add(typeArg);
-                else if (attrName == "Without")
-                    withoutTypes.Add(typeArg);
-                else if (attrName == "Changed")
-                    changedTypes.Add(typeArg);
+            string fieldName = f.Declaration.Variables.First().Identifier.Text;
+            bool isReadonly = IsReadonly(f);
+
+            if (cleanType == "Entity")
+            {
+                entityFieldName = fieldName;
+            }
+            else if (fieldIsOptional)
+            {
+                optional.Add(
+                    new QueryField(
+                        Type: cleanType,
+                        Name: fieldName,
+                        IsRef: false,
+                        IsReadonly: false
+                    )
+                );
+            }
+            else
+            {
+                if (!fieldIsSpan)
+                    isSpan = false;
+
+                fields.Add(
+                    new QueryField(
+                        Type: cleanType, // Stores "Position" instead of "Span<Position>"
+                        Name: fieldName,
+                        IsRef: rawType.Contains("ref"),
+                        IsReadonly: isReadonly
+                    )
+                );
             }
         }
+
+        if (fields.Count == 0)
+            return null;
+
+        return new QueryModel(
+            isSpan,
+            structDecl.Identifier.Text,
+            Namespace,
+            entityFieldName,
+            fields,
+            withTypes,
+            withoutTypes,
+            changedTypes,
+            optional
+        );
     }
-
-    if (!isQuery)
-        return null;
-
-    string entityFieldName = null;
-    var fields = new List<QueryField>();
-
-    foreach (var f in structDecl.Members.OfType<FieldDeclarationSyntax>())
-    {
-        TypeSyntax typeSyntax = f.Declaration.Type;
-        string rawType = typeSyntax.ToString();
-        string cleanType = rawType;
-        bool fieldIsSpan = false;
-
-        // Unwrap Span<T> to extract 'T' (e.g. Position) for SparseSet lookups
-        if (typeSyntax is GenericNameSyntax genericType && genericType.Identifier.Text == "Span")
-        {
-            cleanType = genericType.TypeArgumentList.Arguments[0].ToString();
-            fieldIsSpan = true;
-        }
-        else if (typeSyntax is RefTypeSyntax refType)
-        {
-            cleanType = refType.Type.ToString();
-        }
-
-        string fieldName = f.Declaration.Variables.First().Identifier.Text;
-        bool isReadonly = IsReadonly(f);
-
-        if (cleanType == "Entity")
-        {
-            entityFieldName = fieldName;
-        }
-        else
-        {
-            if (!fieldIsSpan) 
-                isSpan = false;
-
-            fields.Add(
-                new QueryField(
-                    Type: cleanType, // Stores "Position" instead of "Span<Position>"
-                    Name: fieldName,
-                    IsRef: rawType.Contains("ref"),
-                    IsReadonly: isReadonly
-                )
-            );
-        }
-    }
-
-    if (fields.Count == 0)
-        return null;
-
-    return new QueryModel(
-        isSpan,
-        structDecl.Identifier.Text,
-        Namespace,
-        entityFieldName,
-        fields,
-        withTypes,
-        withoutTypes,
-        changedTypes
-    );
-}
 
     // --- Phase 2: Generation ---
     private static string GenerateSourceCode(QueryModel model)
@@ -214,35 +235,34 @@ private static QueryModel ParseQueryModel(StructDeclarationSyntax structDecl, st
                 );
             }
             return $$"""
-            // <auto-generated/>
-            using System;
-            using System.Runtime.InteropServices;
-            using System.Runtime.CompilerServices;
-            using TECS;
-            using TECS.Query;
-            using TECS.Resources;
+                // <auto-generated/>
+                using System;
+                using System.Runtime.InteropServices;
+                using System.Runtime.CompilerServices;
+                using TECS;
+                using TECS.Query;
+                using TECS.Resources;
 
-            {{namespaceStart}}
+                {{namespaceStart}}
 
-                public static class {{model.StructName}}Extensions
-                {
-                    {{GenerateAccess(FieldAccess.Read,model)}}
-                    {{GenerateAccess(FieldAccess.Write, model)}}
- 
-                    public static {{model.StructName }} Single(this Query<{{model.StructName}}> query){
-                        return new {{model.StructName}}{ 
-                            {{spans}}
-                        };
+                    public static class {{model.StructName}}Extensions
+                    {
+                        {{GenerateAccess(FieldAccess.Read, model)}}
+                        {{GenerateAccess(FieldAccess.Write, model)}}
+
+                        public static {{model.StructName}} Single(this Query<{{model.StructName}}> query){
+                            return new {{model.StructName}}{ 
+                                {{spans}}
+                            };
+                        }
                     }
                 }
-            }
-            """;
+                """;
         }
         var fieldsSB = new StringBuilder();
         var constructorsSB = new StringBuilder();
         var moveNextChecks = new StringBuilder();
- 
- 
+
         GenerateComponentCaches(model, fieldsSB, constructorsSB);
         GenerateFilterCaches(model, fieldsSB, constructorsSB, moveNextChecks);
 
@@ -250,7 +270,6 @@ private static QueryModel ParseQueryModel(StructDeclarationSyntax structDecl, st
         string moveNextLogic = GenerateMoveNextLogic(model, moveNextChecks.ToString());
         string fieldAssignments = GenerateCurrentAssignments(model);
 
-        
         string namespaceEnd = string.IsNullOrEmpty(model.NamespaceName) ? "" : "}";
         bool needsEntity = model.Fields.Count > 1 || !string.IsNullOrEmpty(model.entityFieldName);
         string entityLocal = needsEntity
@@ -260,6 +279,7 @@ private static QueryModel ParseQueryModel(StructDeclarationSyntax structDecl, st
         string singleMethod = GenerateSingleMethod(model);
         string readAccess = GenerateAccess(FieldAccess.Read, model);
         string writeAccess = GenerateAccess(FieldAccess.Write, model);
+        string getMethod = GenerateGetMethod(model);
         return $$"""
             // <auto-generated/>
             using System;
@@ -267,6 +287,7 @@ private static QueryModel ParseQueryModel(StructDeclarationSyntax structDecl, st
             using System.Runtime.CompilerServices;
             using TECS;
             using TECS.Query;
+            using TECS.Result;
             using TECS.Resources;
 
             {{namespaceStart}}
@@ -281,6 +302,8 @@ private static QueryModel ParseQueryModel(StructDeclarationSyntax structDecl, st
                     }
 
                     {{singleMethod}}
+                    
+                    {{getMethod}}
                 }
 
 
@@ -361,15 +384,15 @@ private static QueryModel ParseQueryModel(StructDeclarationSyntax structDecl, st
             bool isChanged = model.ChangedTypes.Contains(field.Type);
             if (!field.IsReadonly || isChanged)
             {
-                fields.AppendLine($"    private ref uint _ticks{i};");
+                fields.AppendLine($"    private ref Tick _ticks{i};");
                 constructors.AppendLine(
                     $"            _ticks{i} = ref MemoryMarshal.GetReference(set{i}.GetLastTicks());"
                 );
                 needTick = true;
             }
         }
-        fields.AppendLine(needTick ? $"        private uint _currentTick;" : "");
-        constructors.AppendLine(needTick ? "        _currentTick = (uint)_ecs.GlobalTick;" : "");
+        fields.AppendLine(needTick ? $"        private Tick _currentTick;" : "");
+        constructors.AppendLine(needTick ? "        _currentTick = _ecs.GlobalTick;" : "");
     }
 
     private static void GenerateFilterCaches(
@@ -473,24 +496,20 @@ private static QueryModel ParseQueryModel(StructDeclarationSyntax structDecl, st
         string entity = needsEntity ? "Entity entity = enumerator.CurrentEntity;" : "";
 
         string method = $$"""
-                public static {{model.StructName}} Single(this Query<{{model.StructName}}> query)
+                public static QueryResult<{{model.StructName}},QuerySingleError> Single(this Query<{{model.StructName}}> query)
                 {
                     var enumerator = query.GetEnumerator();
                     bool hasFirst = enumerator.MoveNext();
-                        #if DEBUG
                         if (!hasFirst)
                         {
-                            throw new InvalidCastException($"No {{model.StructName}} has been added.");
+                          return QuerySingleError.Empty; 
                         }
-                        #endif
                         {{entity}}
                         {{idx}}
-                        #if DEBUG
                         if (enumerator.MoveNext())
                         {
-                            throw new InvalidOperationException($"More than one entity with queried component {{model.StructName}} has been found!");
+                          return QuerySingleError.Multiple;
                         }
-                        #endif
 
                         var _ecs = query.World;
 
@@ -615,6 +634,16 @@ private static QueryModel ParseQueryModel(StructDeclarationSyntax structDecl, st
                 $"                    {field.Name} = {refStr} Unsafe.Add(ref _dense{i}, _idx{i}){comma}"
             );
         }
+        var optionalComma = model.Optionals.Count > 0 ? "," : "";
+        sb.AppendLine(optionalComma);
+        for (int i = 0; i < model.Optionals.Count; i++)
+        {
+            var opt = model.Optionals[i];
+            string comma = (i == model.Optionals.Count - 1) ? "" : ",";
+            sb.AppendLine(
+                $"                    {opt.Name} = _ecs.GetSparseSet<{opt.Type}>().GetReadonlyValue(CurrentEntity)"
+            );
+        }
         return sb.ToString();
     }
 
@@ -635,6 +664,55 @@ private static QueryModel ParseQueryModel(StructDeclarationSyntax structDecl, st
                 model.Fields.Where(t => t.IsReadonly == readOnly).Select(t => $"typeof({t.Type})")
             )}} 
                     };
+            """;
+    }
+
+    private static string GenerateGetMethod(QueryModel model)
+    {
+        var structName = model.StructName;
+        var components = new StringBuilder();
+        var checks = new StringBuilder();
+        var assignment = new StringBuilder();
+        var optionals = new StringBuilder();
+
+        var comma = "";
+        for (int i = 0; i < model.Fields.Count; i++)
+        {
+            var field = model.Fields[i];
+            components.AppendLine(
+                $"            var comp{i} = query.World.GetSparseSet<{field.Type}>().GetValue(entity, (uint)query.World.GlobalTick) ;"
+            );
+
+            checks.AppendLine(
+                $"            if(comp{i}.IsNone) return QueryOption<{structName}>.None();"
+            );
+            comma = (i == model.Fields.Count - 1) ? "" : ",";
+            assignment.AppendLine($"            {field.Name} = ref comp{i}.Unwrap(){comma}");
+        }
+
+        comma = model.Optionals.Count > 0 ? "," : "";
+        assignment.AppendLine(comma);
+        for (int i = 0; i < model.Optionals.Count; i++)
+        {
+            var opt = model.Optionals[i];
+            comma = (i == model.Fields.Count - 1) ? "" : ",";
+            assignment.AppendLine(
+                $"            {opt.Name} = query.World.GetSparseSet<{opt.Type}>().GetReadonlyValue(entity){comma}"
+            );
+        }
+
+        return $$"""
+            public static QueryOption<{{structName}}> Get(this Query<{{structName}}> query, Entity entity){
+              //Get components
+                {{components}}
+
+                {{checks}}
+                var ret = QueryOption<{{structName}}>.Some(new {{structName}}{
+
+                          {{assignment}}
+                          });
+                    return ret;
+            }
             """;
     }
 
