@@ -139,6 +139,7 @@ public class QueryGenerator : IIncrementalGenerator
         string entityFieldName = null;
         var fields = new List<QueryField>();
         var optional = new List<QueryField>();
+        bool optionalMut = false;
 
         foreach (var f in structDecl.Members.OfType<FieldDeclarationSyntax>())
         {
@@ -160,6 +161,12 @@ public class QueryGenerator : IIncrementalGenerator
                     cleanType = genericType.TypeArgumentList.Arguments[0].ToString();
                     fieldIsOptional = true;
                 }
+                else if(genericType.Identifier.Text == "OptionMut")
+                {
+                    cleanType = genericType.TypeArgumentList.Arguments[0].ToString();
+                    fieldIsOptional = true;
+                    optionalMut = true;
+                }
             }
             else if (typeSyntax is RefTypeSyntax refType)
             {
@@ -179,7 +186,7 @@ public class QueryGenerator : IIncrementalGenerator
                     new QueryField(
                         Type: cleanType,
                         Name: fieldName,
-                        IsRef: false,
+                        IsRef: optionalMut,
                         IsReadonly: false
                     )
                 );
@@ -470,6 +477,7 @@ public class QueryGenerator : IIncrementalGenerator
         var idx = new StringBuilder();
         var getSets = new StringBuilder();
         var objectInit = new StringBuilder();
+        string comma = "";
 
         if (!string.IsNullOrEmpty(model.entityFieldName))
         {
@@ -485,11 +493,31 @@ public class QueryGenerator : IIncrementalGenerator
                 $"            ref var dense{i} = ref MemoryMarshal.GetReference(CollectionsMarshal.AsSpan(set{i}.GetDense()));"
             );
 
-            string comma = (i == model.Fields.Count - 1) ? "" : ",";
+            comma = (i == model.Fields.Count - 1) ? "" : ",";
             string refStr = model.Fields[i].IsRef ? "ref" : "";
             objectInit.AppendLine(
                 $" {model.Fields[i].Name} = {refStr} Unsafe.Add(ref dense{i}, idx{i}){comma}"
             );
+        }
+        comma = model.Optionals.Count > 0 ? "," : "";
+        objectInit.Append(comma);
+
+        for(int i = 0; i < model.Optionals.Count; i++)
+        {
+            var field = model.Optionals[i];
+            comma = (i == model.Fields.Count - 1) ? "" : ",";
+            if (!field.IsRef)
+            {
+                objectInit.AppendLine(
+                    $"            {field.Name} = query.World.GetSparseSet<{field.Type}>().GetReadonlyValue(enumerator.CurrentEntity){comma}"
+                );
+            }
+            else
+            {
+                objectInit.AppendLine(
+                    $"            {field.Name} = query.World.GetSparseSet<{field.Type}>().GetValue(enumerator.CurrentEntity, query.World.GlobalTick){comma}"
+                );
+            }
         }
 
         bool needsEntity = model.Fields.Count > 1 || !string.IsNullOrEmpty(model.entityFieldName);
@@ -640,9 +668,17 @@ public class QueryGenerator : IIncrementalGenerator
         {
             var opt = model.Optionals[i];
             string comma = (i == model.Optionals.Count - 1) ? "" : ",";
-            sb.AppendLine(
-                $"                    {opt.Name} = _ecs.GetSparseSet<{opt.Type}>().GetReadonlyValue(CurrentEntity)"
-            );
+            if(opt.IsRef){
+                sb.AppendLine(
+                    $"                    {opt.Name} = _ecs.GetSparseSet<{opt.Type}>().GetValue(CurrentEntity, _currentTick)"
+                );
+            }
+            else
+            {
+                sb.AppendLine(
+                    $"                    {opt.Name} = _ecs.GetSparseSet<{opt.Type}>().GetReadonlyValue(CurrentEntity)"
+                );
+            }
         }
         return sb.ToString();
     }
@@ -694,11 +730,20 @@ public class QueryGenerator : IIncrementalGenerator
         assignment.AppendLine(comma);
         for (int i = 0; i < model.Optionals.Count; i++)
         {
-            var opt = model.Optionals[i];
+            var field = model.Optionals[i];
             comma = (i == model.Fields.Count - 1) ? "" : ",";
-            assignment.AppendLine(
-                $"            {opt.Name} = query.World.GetSparseSet<{opt.Type}>().GetReadonlyValue(entity){comma}"
-            );
+            if (!field.IsRef)
+            {
+                assignment.AppendLine(
+                    $"            {field.Name} = query.World.GetSparseSet<{field.Type}>().GetReadonlyValue(entity){comma}"
+                );
+            }
+            else
+            {
+                assignment.AppendLine(
+                    $"            {field.Name} = query.World.GetSparseSet<{field.Type}>().GetValue(entity, query.World.GlobalTick){comma}"
+                );
+            }
         }
 
         return $$"""
