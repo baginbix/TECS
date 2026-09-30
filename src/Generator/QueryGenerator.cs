@@ -53,9 +53,8 @@ public class QueryGenerator : IIncrementalGenerator
 
     private static bool IsReadonly(FieldDeclarationSyntax fiedlDecl)
     {
-        return fiedlDecl.Modifiers.Any(m =>
-            m.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.ReadOnlyKeyword)
-        );
+        return fiedlDecl.Declaration.Type is RefTypeSyntax refType &&
+            refType.ReadOnlyKeyword != default;
     }
 
     static string GetNamespace(INamedTypeSymbol symbol)
@@ -323,9 +322,9 @@ public class QueryGenerator : IIncrementalGenerator
                     private readonly int _denseLength;
                     private int _index;
                     private int _indexDriver;
-                    private readonly uint _systemTick;
+                    private readonly Tick _systemTick;
 
-                    public {{model.StructName}}Enumerator(ECS ecs, uint systemTick)
+                    public {{model.StructName}}Enumerator(ECS ecs, Tick systemTick)
                     {
                         _ecs = ecs;
                         _index = -1;
@@ -716,7 +715,7 @@ public class QueryGenerator : IIncrementalGenerator
         {
             var field = model.Fields[i];
             components.AppendLine(
-                $"            var comp{i} = query.World.GetSparseSet<{field.Type}>().GetValue(entity, (uint)query.World.GlobalTick) ;"
+                $"            var comp{i} = query.World.GetSparseSet<{field.Type}>().GetValue(entity, query.World.GlobalTick) ;"
             );
 
             checks.AppendLine(
