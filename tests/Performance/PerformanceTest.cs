@@ -6,6 +6,7 @@ using BenchmarkDotNet.Attributes;
 using TECS;
 using TECS.Commands;
 using TECS.Query; // Ensure your Query namespace is included
+using TECS.Scheduler.Labels;
 
 namespace PerformanceTests;
 
@@ -39,15 +40,15 @@ public ref struct Query1
 public ref struct Query2
 {
     public ref Position p;
-    public ref Velocity v;
+    public ref readonly Velocity v;
 }
 
 [Query]
 public ref struct Query3
 {
     public ref Position p;
-    public ref Velocity v;
-    public ref Component3 c;
+    public ref readonly Velocity v;
+    public ref readonly Component3 c;
 }
 
 [Query]
@@ -134,7 +135,7 @@ public class EcsBenchmarks
         cmd.Flush(ecs);
 
         // Register the benchmark system
-        app.AddSystem(BenchmarkSystems.ProcessOneComponent);
+        app.AddSystem<Update>(BenchmarkSystems.ProcessOneComponent);
     }
 
     [Benchmark]
