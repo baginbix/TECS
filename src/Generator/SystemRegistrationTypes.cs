@@ -105,7 +105,7 @@ public record ResMutParam(string ParameterName, int Index, string ResourceType)
     public override string TypeSignatureId => "ResMut_" + SanitizeTypeName(ResourceType);
 
     public override string? GenerateSetupCode() =>
-        $"var resMut_{Index} = new global::TECS.Query.ResMut<{ResourceType}>(ecs.GetResource<ResourceType>(), systemTick);";
+        $"var resMut_{Index} = new global::TECS.Resources.ResMut<{ResourceType}>(ecs.GetResource<{ResourceType}>(), systemTick);";
 
     public override string GenerateArgumentCode() => $"resMut_{Index}";
 

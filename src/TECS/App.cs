@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using TECS.Commands;
+using TECS.Executors;
 using TECS.Plugins;
 using TECS.Query;
 using TECS.Resources;
@@ -139,10 +140,21 @@ public partial class App
         return this;
     }
 
-    public App SetScheduler<TSchedule>(IScheduler scheduler)
+    public IScheduler GetScheduler<TSchedule>()
     {
+        return ecs.GetResource<Schedulers>().GetResource().schedulers[typeof(TSchedule)];
+    }
+
+    public void SetExcecutorForScheduler<TSchedule>(IExecutor executor)
+    {
+        ecs.GetResource<Schedulers>().GetResource().schedulers[typeof(TSchedule)].SetExecutor(executor);
+    }
+
+
+    public App SetScheduler<TSchedule>(IScheduler scheduler)
+    {   
         ecs.GetResource<Schedulers>().GetResource().schedulers[typeof(TSchedule)] = scheduler;
-        return this;
+        return this; 
     }
 
     public void RunLoop()
