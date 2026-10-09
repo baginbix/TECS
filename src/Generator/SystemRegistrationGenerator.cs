@@ -70,7 +70,7 @@ public class SystemRegistrationGenerator : IIncrementalGenerator
             // Generate extensions once per unique parameter combination
             if (generatedSignatures.Add(uniqueId))
             {
-                // 1. Generate App Extension Methods
+                // Generate App Extension Methods
                 sourceBuilder.AppendLine(
                     $$"""
                             public static App AddSystem<TSchedule>(this App app, SystemDelegate_{{uniqueId}} system)
@@ -99,13 +99,13 @@ public class SystemRegistrationGenerator : IIncrementalGenerator
                     """
                 );
 
-                // 2. Delegate Signature
+                //Delegate Signature
                 string delegateParams = string.Join(
                     ", ",
                     parameters.Select((p, i) => $"{p.FullTypeName} p{i}")
                 );
 
-                // 3. Reads / Writes DAG Code
+                //Reads / Writes DAG Code
                 var reads = parameters.Select(p => p.GetReadsCode()).Where(c => c != null).ToList();
                 var writes = parameters
                     .Select(p => p.GetWritesCode())
@@ -132,7 +132,7 @@ public class SystemRegistrationGenerator : IIncrementalGenerator
                     readsWritesBuilder.AppendLine("                Writes = Array.Empty<Type>();");
                 }
 
-                // 4. Setup Statements & Invocations
+                // Setup Statements & Invocations
                 string setupStatements = string.Join(
                     "\n                        ",
                     parameters
@@ -145,7 +145,7 @@ public class SystemRegistrationGenerator : IIncrementalGenerator
                     parameters.Select(p => p.GenerateArgumentCode())
                 );
 
-                // 5. Append Delegate & Binding Definition
+                //Append Delegate & Binding Definition
                 delegatesAndBindingsBuilder.AppendLine(
                     $$"""
                         public delegate void SystemDelegate_{{uniqueId}}({{delegateParams}});

@@ -1,11 +1,12 @@
 using System.Threading.Tasks;
 using TECS.Systems;
+using TECS.Systems.Graph;
 
 namespace TECS
 {
     public class SystemSchedular
     {
-        public List<SystemNode> BuildGraph(List<SystemItem> systems)
+        public SystemGraph BuildGraph(List<SystemItem> systems)
         {
             var nodes = new List<SystemNode>();
             foreach (var sys in systems)
@@ -21,8 +22,6 @@ namespace TECS
                 {
                     SystemNode previous = nodes[j];
 
-                    //TODO: Since I reworked how Queries and Systems are created and added
-                    // I need to add back Read/Write for my systems
                     if (HasDependency(current.System.System, previous.System.System))
                     {
                         current.InitialDependencyCount++;
@@ -32,7 +31,7 @@ namespace TECS
                 }
             }
 
-            return nodes;
+            return new(nodes);
         }
 
         private bool HasDependency(SystemBinding current, SystemBinding previous)
