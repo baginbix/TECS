@@ -4,7 +4,7 @@ using TECS.Systems.Graph;
 
 namespace TECS
 {
-    public class SystemSchedular
+    public class SystemScheduler
     {
         public SystemGraph BuildGraph(List<SystemItem> systems)
         {
