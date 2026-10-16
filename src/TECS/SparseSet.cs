@@ -60,8 +60,11 @@ namespace TECS
             if (sparse[pageIndex][pageOffset] != -1)
             {
                 if (!isTag)
-                    dense[sparse[pageIndex][pageOffset]] = data;
-                ticks[entity.Id] = currentTick;
+                {
+                    var denseIndex = sparse[pageIndex][pageOffset];
+                    dense[denseIndex] = data;
+                    ticks[denseIndex] = currentTick;
+                }
                 return;
             }
 
@@ -80,29 +83,32 @@ namespace TECS
             int pageIndex = entity.Id >> PAGE_SHIFT;
             int pageOffset = entity.Id & PAGE_MASK;
 
-            if (sparse[pageIndex][pageOffset] == -1)
+            if (pageIndex >= sparse.Length || sparse[pageIndex] == null || sparse[pageIndex][pageOffset] == -1)
             {
                 return;
             }
+            
 
             int denseId = sparse[pageIndex][pageOffset];
             int index = denseEntities.Count - 1;
             Entity lastEntity = denseEntities[index];
 
+            int pageIndexLast = lastEntity.Id >> PAGE_SHIFT;
+            int pageOffsetLast = lastEntity.Id & PAGE_MASK;
+            if (pageIndexLast >= sparse.Length || sparse[pageIndexLast] == null)
+                return;
+
             if (!isTag)
             {
                 dense[denseId] = dense[index];
                 dense.RemoveAt(index);
+                ticks[denseId] = ticks[index];
+                ticks.RemoveAt(index);
             }
 
             denseEntities[denseId] = denseEntities[index];
 
             denseEntities.RemoveAt(denseEntities.Count - 1);
-
-            int pageIndexLast = lastEntity.Id >> PAGE_SHIFT;
-            int pageOffsetLast = lastEntity.Id & PAGE_MASK;
-            if (pageIndex >= sparse.Length || sparse[pageIndexLast] == null)
-                return;
 
             sparse[pageIndexLast][pageOffsetLast] = denseId;
             sparse[pageIndex][pageOffset] = -1;
