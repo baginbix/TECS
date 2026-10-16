@@ -8,14 +8,14 @@ using TECS.Systems;
 
 namespace TECS.Scheduler
 {
-    public class StandardSchedular : IScheduler
+    public class StandardScheduler : IScheduler
     {
         private IExecutor _executor;
         private readonly List<SystemItem> _systems = new();
         private bool _isDirty = true;
         private List<SystemNode> _graph = new();
 
-        public StandardSchedular()
+        public StandardScheduler()
         {
             _executor = new MultiThreadExecutor();
         }

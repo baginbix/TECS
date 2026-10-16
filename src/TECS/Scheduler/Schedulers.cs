@@ -9,11 +9,11 @@ namespace TECS.Scheduler
 
         public Schedulers()
         {
-            schedulers[typeof(Startup)] = new StandardSchedular();
+            schedulers[typeof(Startup)] = new StandardScheduler();
             schedulers[typeof(StateTransition)] = new StateSchedule();
-            schedulers[typeof(PreUpdate)] = new StandardSchedular();
-            schedulers[typeof(Update)] = new StandardSchedular();
-            schedulers[typeof(PostUpdate)] = new StandardSchedular();
+            schedulers[typeof(PreUpdate)] = new StandardScheduler();
+            schedulers[typeof(Update)] = new StandardScheduler();
+            schedulers[typeof(PostUpdate)] = new StandardScheduler();
         }
     }
 }
